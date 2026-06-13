@@ -1,0 +1,41 @@
+[project]
+name = "sae-nla-rnd"
+version = "0.1.0"
+description = "SAE feature-card pipeline for Gemma 3 + Gemma Scope 2, with future NLA/steering extensions"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+
+dependencies = [
+    "torch",
+    "transformer-lens",
+    "sae-lens",
+    "transformers",
+    "datasets",
+    "accelerate",
+    "einops",
+    "pandas",
+    "pyarrow",
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "tqdm",
+    "matplotlib",
+    "huggingface-hub",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel",
+    "jupyter",
+    "ruff",
+]
+
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

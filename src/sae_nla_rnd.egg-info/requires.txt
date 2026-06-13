@@ -1,0 +1,15 @@
+torch
+transformer-lens
+sae-lens
+transformers
+datasets
+accelerate
+einops
+pandas
+pyarrow
+numpy
+scikit-learn
+scipy
+tqdm
+matplotlib
+huggingface-hub

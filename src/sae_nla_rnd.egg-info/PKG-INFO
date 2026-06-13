@@ -1,0 +1,185 @@
+Metadata-Version: 2.4
+Name: sae-nla-rnd
+Version: 0.1.0
+Summary: SAE feature-card pipeline for Gemma 3 + Gemma Scope 2, with future NLA/steering extensions
+Requires-Python: <3.13,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: torch
+Requires-Dist: transformer-lens
+Requires-Dist: sae-lens
+Requires-Dist: transformers
+Requires-Dist: datasets
+Requires-Dist: accelerate
+Requires-Dist: einops
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
+Requires-Dist: tqdm
+Requires-Dist: matplotlib
+Requires-Dist: huggingface-hub
+
+# SAE / NLA R&D
+
+A small research pipeline for building reusable SAE feature-card datasets from Gemma 3 + Gemma Scope 2 activations.
+
+The repository is meant to hold **code, configuration, and curated notes**. Generated activation datasets and intermediate parquet/numpy files are intentionally ignored by Git.
+
+## Pipeline
+
+```text
+texts
+→ tokens
+→ Gemma residual activations
+→ Gemma Scope 2 SAE activations
+→ top-k sparse activation table
+→ activation-row filtering
+→ feature-level filtering
+→ top activating examples
+→ feature cards
+```
+
+The resulting feature-card tables are intended to support later work on:
+
+1. feature co-activation,
+2. activation-strength bimodality,
+3. SAE decoder-direction geometry,
+4. PCA alignment with residual activations,
+5. natural-language explanations / NLA / SAEExplainer,
+6. SAE-based steering.
+
+## Default experiment
+
+```text
+Model: google/gemma-3-1b-pt
+SAE release: gemma-scope-2-1b-pt-res
+SAE id: layer_13_width_16k_l0_medium
+Hook: blocks.13.hook_resid_post
+SAE width: 16k
+Run name: gemma3_1b_l13_res16k_tinystories
+```
+
+Implementation notes:
+
+- The model is loaded with `torch.bfloat16`. In the initial Colab run, `float16` produced NaNs in residual activations.
+- SAE activations are stored as a top-k sparse table: by default, top 10 SAE features per token.
+- Feature frequency therefore means "frequency of appearing in saved top-k activations", not "frequency of any positive activation".
+- BOS removal is implemented as part of a generic activation-row filtering layer, not as a hardcoded special case.
+
+## Local setup with uv
+
+Install uv:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Clone and install:
+
+```bash
+git clone <YOUR_REPO_URL>
+cd sae-nla-rnd
+uv sync
+```
+
+Log in to Hugging Face if needed:
+
+```bash
+uv run huggingface-cli login
+```
+
+Run smoke test:
+
+```bash
+uv run python scripts/00_smoke_test.py
+```
+
+Run the current pipeline:
+
+```bash
+uv run python scripts/01_collect_activations.py
+uv run python scripts/02_build_feature_cards.py
+```
+
+Generated data goes under:
+
+```text
+data/raw/
+data/processed/<run_name>/
+reports/<run_name>/
+```
+
+## Colab workflow
+
+```python
+!git clone <YOUR_REPO_URL>
+%cd sae-nla-rnd
+
+!curl -LsSf https://astral.sh/uv/install.sh | sh
+!~/.local/bin/uv sync
+```
+
+Then log in:
+
+```python
+from huggingface_hub import notebook_login
+notebook_login()
+```
+
+Run:
+
+```python
+!~/.local/bin/uv run python scripts/00_smoke_test.py
+!~/.local/bin/uv run python scripts/01_collect_activations.py
+!~/.local/bin/uv run python scripts/02_build_feature_cards.py
+```
+
+If Colab conflicts with uv environments, use the system-environment fallback:
+
+```python
+!~/.local/bin/uv pip install --system -e .
+!python scripts/00_smoke_test.py
+```
+
+## What should be committed
+
+Commit:
+
+```text
+pyproject.toml
+uv.lock
+README.md
+.gitignore
+src/
+scripts/
+notebooks/        # optional, if curated
+reports/          # only hand-written / curated notes
+```
+
+Do not commit generated data:
+
+```text
+data/raw/*.jsonl
+data/processed/**/*.parquet
+data/processed/**/*.npy
+```
+
+## Generated artifacts
+
+For the default run, the scripts produce files like:
+
+```text
+data/raw/texts_sample.jsonl
+data/processed/gemma3_1b_l13_res16k_tinystories/token_metadata.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/sae_activations_topk.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/residual_vectors_sample.npy
+data/processed/gemma3_1b_l13_res16k_tinystories/residual_vectors_metadata.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/feature_stats.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/filtered_features.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/top_feature_examples.parquet
+data/processed/gemma3_1b_l13_res16k_tinystories/feature_cards.parquet
+reports/gemma3_1b_l13_res16k_tinystories/manifest.json
+```
+
+The manifest is generic run metadata. Custom narrative reports should be written by hand when needed.

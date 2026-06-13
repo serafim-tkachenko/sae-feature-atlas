@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+.env
+.env.*
+.python-version
+
+# Local caches
+.cache/
+hf_cache/
+wandb/
+runs/
+
+# Data artifacts: keep generated data outside Git
+data/raw/*.jsonl
+data/raw/*.json
+data/raw/*.txt
+data/processed/**/*.parquet
+data/processed/**/*.npy
+data/processed/**/*.csv
+data/processed/**/*.json
+
+# Generated run metadata can be large/noisy; commit only curated reports manually
+reports/**/manifest.json
+reports/**/metrics.json
+
+# Large local outputs
+outputs/
+checkpoints/
+models/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
