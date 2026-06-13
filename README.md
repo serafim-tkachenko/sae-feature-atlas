@@ -1,8 +1,6 @@
-# SAE / NLA R&D
+# SAE/NLA feature atlas
 
-A small research pipeline for building reusable SAE feature-card datasets from Gemma 3 + Gemma Scope 2 activations.
-
-The repository is meant to hold **code, configuration, and curated notes**. Generated activation datasets and intermediate parquet/numpy files are intentionally ignored by Git.
+A small research pipeline for building reusable SAE feature-card datasets from Gemma 3 + Gemma Scope 2 activations
 
 ## Pipeline
 
@@ -25,7 +23,7 @@ The resulting feature-card tables are intended to support later work on:
 3. SAE decoder-direction geometry,
 4. PCA alignment with residual activations,
 5. natural-language explanations / NLA / SAEExplainer,
-6. SAE-based steering.
+6. SAE-based steering
 
 ## Default experiment
 
@@ -40,10 +38,9 @@ Run name: gemma3_1b_l13_res16k_tinystories
 
 Implementation notes:
 
-- The model is loaded with `torch.bfloat16`. In the initial Colab run, `float16` produced NaNs in residual activations.
-- SAE activations are stored as a top-k sparse table: by default, top 10 SAE features per token.
-- Feature frequency therefore means "frequency of appearing in saved top-k activations", not "frequency of any positive activation".
-- BOS removal is implemented as part of a generic activation-row filtering layer, not as a hardcoded special case.
+- The model is loaded with `torch.bfloat16`. In the initial Colab run, `float16` produced NaNs in residual activations
+- SAE activations are stored as a top-k sparse table: by default, top 10 SAE features per token
+- Feature frequency therefore means "frequency of appearing in saved top-k activations", not "frequency of any positive activation"
 
 ## Local setup with uv
 
@@ -56,15 +53,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Clone and install:
 
 ```bash
-git clone <YOUR_REPO_URL>
-cd sae-nla-rnd
+git clone https://github.com/serafim-tkachenko/sae-feature-atlas
+cd sae-feature-atlas
 uv sync
 ```
 
 Log in to Hugging Face if needed:
 
 ```bash
-uv run huggingface-cli login
+uv run hf auth login
 ```
 
 Run smoke test:
@@ -91,8 +88,8 @@ reports/<run_name>/
 ## Colab workflow
 
 ```python
-!git clone <YOUR_REPO_URL>
-%cd sae-nla-rnd
+!git clone https://github.com/serafim-tkachenko/sae-feature-atlas
+%cd sae-feature-atlas
 
 !curl -LsSf https://astral.sh/uv/install.sh | sh
 !~/.local/bin/uv sync
@@ -120,28 +117,6 @@ If Colab conflicts with uv environments, use the system-environment fallback:
 !python scripts/00_smoke_test.py
 ```
 
-## What should be committed
-
-Commit:
-
-```text
-pyproject.toml
-uv.lock
-README.md
-.gitignore
-src/
-scripts/
-notebooks/        # optional, if curated
-reports/          # only hand-written / curated notes
-```
-
-Do not commit generated data:
-
-```text
-data/raw/*.jsonl
-data/processed/**/*.parquet
-data/processed/**/*.npy
-```
 
 ## Generated artifacts
 
@@ -160,4 +135,4 @@ data/processed/gemma3_1b_l13_res16k_tinystories/feature_cards.parquet
 reports/gemma3_1b_l13_res16k_tinystories/manifest.json
 ```
 
-The manifest is generic run metadata. Custom narrative reports should be written by hand when needed.
+All rights reserved
