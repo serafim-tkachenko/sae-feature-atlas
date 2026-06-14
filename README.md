@@ -225,7 +225,7 @@ bundle = GemmaScopeBundle(cfg).load()
 
 print(bundle.validate())
 
-values, indices = bundle.topk_features("The Eiffel Tower is in Paris.", top_k=10)
+values, indices = bundle.topk_features("London is the capital of Great Britain", top_k=10)
 print(indices)
 ```
 

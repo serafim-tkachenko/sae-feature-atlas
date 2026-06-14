@@ -10,7 +10,7 @@ def get_decoder_weight(sae) -> torch.Tensor:
         return sae.W_dec
     if hasattr(sae, "W_dec_DF"):
         return sae.W_dec_DF
-    raise AttributeError("Could not find decoder weight on SAE object.")
+    raise AttributeError("Could not find decoder weight on SAE object")
 
 
 def compute_decoder_neighbors(
@@ -69,11 +69,17 @@ def merge_geometry_with_coactivation(
         return merged
 
     cos_hi = merged["decoder_cosine"].quantile(0.90)
-    co_hi = merged["jaccard"].quantile(0.90)
+
+    positive_jaccard = merged.loc[merged["jaccard"] > 0, "jaccard"]
+    if positive_jaccard.empty:
+        co_hi = float("inf")
+    else:
+        co_hi = positive_jaccard.quantile(0.90)
 
     def quadrant(row):
         high_cos = row["decoder_cosine"] >= cos_hi
-        high_co = row["jaccard"] >= co_hi
+        high_co = row["jaccard"] > 0 and row["jaccard"] >= co_hi
+
         if high_cos and high_co:
             return "high_cosine_high_coactivation"
         if high_cos and not high_co:
@@ -83,4 +89,7 @@ def merge_geometry_with_coactivation(
         return "low_cosine_low_coactivation"
 
     merged["quadrant"] = merged.apply(quadrant, axis=1)
+    merged["decoder_cosine_threshold"] = cos_hi
+    merged["coactivation_jaccard_threshold"] = co_hi
+
     return merged

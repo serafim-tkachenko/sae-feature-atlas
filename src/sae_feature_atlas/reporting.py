@@ -76,20 +76,126 @@ def write_html_report(cfg: ExperimentConfig) -> None:
 <head>
   <meta charset="utf-8"/>
   <title>SAE Feature Atlas: {cfg.collection.run_name}</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 1180px;
+      margin: 40px auto;
+      padding: 0 24px;
+      line-height: 1.55;
+      color: #222;
+      background: #fff;
+    }}
+    h1 {{
+      font-size: 34px;
+      margin-bottom: 4px;
+    }}
+    h2 {{
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 6px;
+      margin-top: 36px;
+    }}
+    h3 {{
+      margin-top: 24px;
+    }}
+    .subtitle {{
+      color: #666;
+      font-size: 16px;
+      margin-top: 0;
+    }}
+    .card {{
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      background: #fafafa;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }}
+    .metric {{
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 12px;
+      background: white;
+    }}
+    .metric .label {{
+      color: #666;
+      font-size: 13px;
+    }}
+    .metric .value {{
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 4px;
+    }}
+    img {{
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      margin: 8px 0 20px;
+      background: white;
+    }}
+    code {{
+      background: #f2f2f2;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }}
+    iframe {{
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: white;
+    }}
+    .note {{
+      color: #555;
+      font-size: 14px;
+    }}
+  </style>
 </head>
 <body>
-  <h1>SAE Feature Atlas: {cfg.collection.run_name}</h1>
+  <h1>SAE Feature Atlas</h1>
+  <p class="subtitle"><code>{cfg.collection.run_name}</code></p>
+
+  <div class="card">
+    <h2>What this report is</h2>
+    <p>
+      This is an exploratory SAE feature-atlas report. It summarizes a pilot run
+      over a corpus, extracts sparse SAE activations, builds feature cards, and
+      computes first-pass analyses such as co-activation, decoder-neighbor geometry,
+      and bimodality candidates.
+    </p>
+    <p class="note">
+      This report is not a final interpretation. Feature explanations should be
+      validated by manual inspection or future NLA / SAEExplainer steps.
+    </p>
+  </div>
+
   <h2>Setup</h2>
-  <ul>
-    <li>Model: <code>{cfg.model.model_name}</code></li>
-    <li>SAE: <code>{cfg.model.sae_release}</code> / <code>{cfg.model.sae_id}</code></li>
-    <li>Hook: <code>{cfg.model.hook_name}</code></li>
-    <li>Corpus: <code>{cfg.collection.corpus}</code></li>
-    <li>Activation mode: <code>{cfg.collection.activation_mode}</code></li>
-    <li>Top-k: <code>{cfg.collection.top_k_features_per_token}</code></li>
-  </ul>
+  <div class="grid">
+    <div class="metric"><div class="label">Model</div><div class="value"><code>{cfg.model.model_name}</code></div></div>
+    <div class="metric"><div class="label">Layer</div><div class="value">{cfg.model.layer}</div></div>
+    <div class="metric"><div class="label">Corpus</div><div class="value"><code>{cfg.collection.corpus}</code></div></div>
+    <div class="metric"><div class="label">Activation mode</div><div class="value"><code>{cfg.collection.activation_mode}</code></div></div>
+    <div class="metric"><div class="label">Top-k</div><div class="value">{cfg.collection.top_k_features_per_token}</div></div>
+    <div class="metric"><div class="label">SAE</div><div class="value"><code>{cfg.model.sae_id}</code></div></div>
+  </div>
+
+  <div class="card">
+    <h2>How to read this report</h2>
+    <ul>
+      <li>Feature frequency depends on the activation storage mode.</li>
+      <li>In <code>topk</code> mode, frequency means appearance among the saved top-k activations, not true positive activation frequency.</li>
+      <li>Decoder-neighbor geometry compares SAE decoder-vector cosine similarity.</li>
+      <li>Co-activation measures empirical same-token overlap in the selected corpus.</li>
+      <li>Bimodality candidates are statistical hints, not confirmed semantic claims.</li>
+    </ul>
+  </div>
+
   <h2>Plots</h2>
   {plot_html}
+
   <h2>Tables</h2>
   {table_html}
 </body>
