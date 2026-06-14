@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 
-from sae_nla_rnd.activations import collect_sparse_sae_activations
-from sae_nla_rnd.config import CFG
-from sae_nla_rnd.dataset import build_text_dataset, build_token_metadata, save_text_dataset
-from sae_nla_rnd.io_utils import ensure_project_dirs
-from sae_nla_rnd.manifest import build_run_manifest, write_run_manifest
-from sae_nla_rnd.model_utils import (
+from sae_feature_atlas.activations import collect_sparse_sae_activations
+from sae_feature_atlas.config import CFG
+from sae_feature_atlas.dataset import build_text_dataset, build_token_metadata, save_text_dataset
+from sae_feature_atlas.io_utils import ensure_project_dirs
+from sae_feature_atlas.manifest import build_run_manifest, write_run_manifest
+from sae_feature_atlas.model_utils import (
     get_device,
     load_model,
     load_sae,

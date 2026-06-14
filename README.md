@@ -6,14 +6,14 @@ A small research pipeline for building reusable SAE feature-card datasets from G
 
 ```text
 texts
-→ tokens
-→ Gemma residual activations
-→ Gemma Scope 2 SAE activations
-→ top-k sparse activation table
-→ activation-row filtering
-→ feature-level filtering
-→ top activating examples
-→ feature cards
+-> tokens
+-> Gemma residual activations
+-> Gemma Scope 2 SAE activations
+-> top-k sparse activation table
+-> activation-row filtering
+-> feature-level filtering
+-> top activating examples
+-> feature cards
 ```
 
 The resulting feature-card tables are intended to support later work on:
@@ -22,7 +22,7 @@ The resulting feature-card tables are intended to support later work on:
 2. activation-strength bimodality,
 3. SAE decoder-direction geometry,
 4. PCA alignment with residual activations,
-5. natural-language explanations / NLA / SAEExplainer,
+5. natural-language explanations/NLA,
 6. SAE-based steering
 
 ## Default experiment

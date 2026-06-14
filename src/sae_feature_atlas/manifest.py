@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from sae_nla_rnd.config import ExperimentConfig
-from sae_nla_rnd.io_utils import write_json
+from sae_feature_atlas.config import ExperimentConfig
+from sae_feature_atlas.io_utils import write_json
 
 
 def build_run_manifest(cfg: ExperimentConfig, metrics: dict, stage: str) -> dict:

@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from sae_nla_rnd.config import ExperimentConfig
+from sae_feature_atlas.config import ExperimentConfig
 
 
 def collect_sparse_sae_activations(

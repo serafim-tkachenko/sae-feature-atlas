@@ -6,8 +6,8 @@ import pandas as pd
 from datasets import load_dataset
 from tqdm import tqdm
 
-from sae_nla_rnd.config import ExperimentConfig
-from sae_nla_rnd.io_utils import write_jsonl
+from sae_feature_atlas.config import ExperimentConfig
+from sae_feature_atlas.io_utils import write_jsonl
 
 
 # Manual texts to extend the first corpus - will be changed in the next updates
@@ -70,14 +70,16 @@ def clean_text(text: str) -> str:
 def build_text_dataset(cfg: ExperimentConfig) -> list[dict]:
     texts: list[dict] = []
 
-    ds = load_dataset("roneneldan/TinyStories", split="train", streaming=True)
-    target_from_tinystories = max(cfg.collection.max_texts - len(MANUAL_TEXTS), 0)
+    # More diverse than TinyStories
+    pile = load_dataset("NeelNanda/pile-10k", split="train")
 
-    for row in ds:
+    target_from_pile = max(cfg.collection.max_texts - len(MANUAL_TEXTS), 0)
+
+    for row in pile:
         text = clean_text(row["text"])
-        if len(text) > 200:
-            texts.append({"source": "tinystories", "text": text})
-        if len(texts) >= target_from_tinystories:
+        if len(text) > 300:
+            texts.append({"source": "pile-10k", "text": text})
+        if len(texts) >= target_from_pile:
             break
 
     for source, text in MANUAL_TEXTS:

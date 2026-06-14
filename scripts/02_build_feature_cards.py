@@ -4,10 +4,10 @@ import json
 
 import pandas as pd
 
-from sae_nla_rnd.config import CFG
-from sae_nla_rnd.features import build_and_save_feature_outputs
-from sae_nla_rnd.io_utils import ensure_project_dirs
-from sae_nla_rnd.manifest import build_run_manifest, write_run_manifest
+from sae_feature_atlas.config import CFG
+from sae_feature_atlas.features import build_and_save_feature_outputs
+from sae_feature_atlas.io_utils import ensure_project_dirs
+from sae_feature_atlas.manifest import build_run_manifest, write_run_manifest
 
 
 def main() -> None:

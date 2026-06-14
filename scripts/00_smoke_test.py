@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from sae_nla_rnd.config import CFG
-from sae_nla_rnd.model_utils import (
+from sae_feature_atlas.config import CFG
+from sae_feature_atlas.model_utils import (
     get_device,
     load_model,
     load_sae,

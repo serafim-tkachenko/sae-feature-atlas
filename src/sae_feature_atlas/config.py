@@ -17,10 +17,10 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class CollectionConfig:
-    run_name: str = "gemma3_1b_l13_res16k_tinystories"
-    max_texts: int = 508
+    run_name: str = "gemma3_1b_l13_res16k_mixed_top64"
+    max_texts: int = 1500
     max_seq_len: int = 256
-    top_k_features_per_token: int = 10
+    top_k_features_per_token: int = 64
     residual_sample_stride: int = 8
     random_seed: int = 42
 
@@ -29,7 +29,7 @@ class CollectionConfig:
 class ActivationRowFilterConfig:
     exclude_token_positions: tuple[int, ...] = (0,)
     exclude_token_strings: tuple[str, ...] = ("<bos>",)
-    exclude_token_substrings: tuple[str, ...] = ()
+    exclude_token_substrings: tuple[str, ...] = ("â", "€", "™")
     include_sources: tuple[str, ...] | None = None
     exclude_sources: tuple[str, ...] = ()
     min_activation: float | None = None
@@ -38,10 +38,10 @@ class ActivationRowFilterConfig:
 
 @dataclass(frozen=True)
 class FeatureFilterConfig:
-    min_feature_token_count: int = 20
-    min_feature_text_count: int = 5
+    min_feature_token_count: int = 50
+    min_feature_text_count: int = 10
     max_feature_token_frequency: float = 0.20
-
+    
 
 @dataclass(frozen=True)
 class PathsConfig:

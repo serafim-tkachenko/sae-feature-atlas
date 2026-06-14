@@ -5,8 +5,8 @@ import json
 import pandas as pd
 from tqdm import tqdm
 
-from sae_nla_rnd.config import ExperimentConfig
-from sae_nla_rnd.filters import apply_activation_row_filters, apply_feature_filters
+from sae_feature_atlas.config import ExperimentConfig
+from sae_feature_atlas.filters import apply_activation_row_filters, apply_feature_filters
 
 
 def compute_feature_stats(acts: pd.DataFrame, token_meta: pd.DataFrame) -> pd.DataFrame:

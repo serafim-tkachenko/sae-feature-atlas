@@ -1,5 +1,5 @@
 [project]
-name = "sae-nla-rnd"
+name = "sae_feature_atlas"
 version = "0.1.0"
 description = "SAE feature-card pipeline for Gemma 3 + Gemma Scope 2, with future NLA/steering extensions"
 readme = "README.md"
