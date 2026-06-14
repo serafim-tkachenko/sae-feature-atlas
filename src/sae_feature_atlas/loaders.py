@@ -4,7 +4,7 @@ import torch
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
 
-from sae_nla_rnd.config import ExperimentConfig
+from sae_feature_atlas.config import ExperimentConfig
 
 
 def get_device() -> str:
@@ -20,7 +20,7 @@ def load_sae(cfg: ExperimentConfig, device: str) -> SAE:
 
 
 def load_model(cfg: ExperimentConfig, device: str) -> HookedTransformer:
-    # Intentional: float16 produced NaNs in the initial Gemma 3 Colab run
+    # bfloat16 is intentional: float16 produced NaNs in the initial Gemma 3 run.
     model = HookedTransformer.from_pretrained(
         cfg.model.model_name,
         device=device,
@@ -35,8 +35,7 @@ def validate_model_sae_compatibility(
     sae: SAE,
     cfg: ExperimentConfig,
     device: str,
-    # Just a custom sentence for first analysis
-    prompt: str = "Cats are agile, domesticated carnivores renowned for their exceptional",
+    prompt: str = "The Eiffel Tower is located in the city of",
 ) -> dict:
     hook_name = cfg.model.hook_name
 
@@ -73,6 +72,10 @@ def validate_model_sae_compatibility(
         )
 
     return {
+        "model_name": cfg.model.model_name,
+        "sae_release": cfg.model.sae_release,
+        "sae_id": cfg.model.sae_id,
+        "hook_name": cfg.model.hook_name,
         "resid_shape": tuple(resid.shape),
         "resid_dtype": str(resid.dtype),
         "sae_d_in": int(sae.cfg.d_in),

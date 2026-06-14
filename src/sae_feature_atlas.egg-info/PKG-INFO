@@ -1,19 +1,42 @@
+Metadata-Version: 2.4
+Name: sae-feature-atlas
+Version: 0.2.0
+Summary: Research toolkit for building SAE feature atlases over Gemma Scope models.
+Author: Serafim Tkachenko
+Requires-Python: <3.13,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: torch
+Requires-Dist: transformer-lens
+Requires-Dist: sae-lens
+Requires-Dist: transformers
+Requires-Dist: datasets
+Requires-Dist: accelerate
+Requires-Dist: einops
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
+Requires-Dist: tqdm
+Requires-Dist: matplotlib
+Requires-Dist: huggingface-hub
+
 # SAE Feature Atlas
 
-`sae_feature_atlas` is a research toolkit for building SAE feature atlases over Gemma Scope models
+`sae_feature_atlas` is a research toolkit for building SAE feature atlases over Gemma Scope models.
 
 It is designed for the workflow we want:
 
 ```text
 choose model + layer
--> automatically resolve the corresponding Gemma Scope SAE
--> choose corpus and activation storage mode
--> run one configurable pipeline
--> get feature cards, analysis tables, plots, and a readable report
--> build custom research on top of the generated feature-card dataset
+→ automatically resolve the corresponding Gemma Scope SAE
+→ choose corpus and activation storage mode
+→ run one configurable pipeline
+→ get feature cards, analysis tables, plots, and a readable report
+→ build custom research on top of the generated feature-card dataset
 ```
 
-The library is intentionally focused on Gemma + Gemma Scope 2 today, but the structure is meant to be extensible
+The library is intentionally focused on Gemma + Gemma Scope 2 today, but the structure is meant to be extensible.
 
 ## Main user workflow
 
@@ -147,17 +170,17 @@ If Colab has environment conflicts:
 --activation-mode topk --top-k 64
 ```
 
-Stores only the strongest K SAE features per token
+Stores only the strongest K SAE features per token.
 
 Pros:
 
 - bounded storage,
 - fast,
-- good for first-pass feature cards and co-activation
+- good for first-pass feature cards and co-activation.
 
 Caveat:
 
-- feature frequency means "frequency of appearing in top-K", not true positive activation frequency
+- feature frequency means "frequency of appearing in top-K", not true positive activation frequency.
 
 ### `positive`
 
@@ -165,17 +188,17 @@ Caveat:
 --activation-mode positive
 ```
 
-Stores all features with positive activation
+Stores all features with positive activation.
 
 Pros:
 
-- more faithful for frequency/co-activation
+- more faithful for frequency/co-activation.
 
 Caveat:
 
 - larger files,
 - slower,
-- more RAM/storage pressure
+- more RAM/storage pressure.
 
 ## Generated outputs
 
@@ -241,8 +264,8 @@ docs/
 src/
 scripts/
 examples/
-notebooks/ # only curated notebooks
-reports/ # only hand-written reports or .gitkeep files
+notebooks/        # only curated notebooks
+reports/          # only hand-written reports or .gitkeep files
 ```
 
 Do not commit generated data:

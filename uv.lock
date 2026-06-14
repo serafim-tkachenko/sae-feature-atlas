@@ -3174,32 +3174,8 @@ wheels = [
 ]
 
 [[package]]
-name = "sae-lens"
-version = "6.44.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "babe" },
-    { name = "datasets" },
-    { name = "nltk" },
-    { name = "plotly" },
-    { name = "plotly-express" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
-    { name = "safetensors" },
-    { name = "simple-parsing" },
-    { name = "tenacity" },
-    { name = "transformer-lens" },
-    { name = "transformers" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/47/06/53efbbab94c9ec2c59fed53edd3669efdca82eb9b05458374a77e022361f/sae_lens-6.44.2.tar.gz", hash = "sha256:277279194ff70e544694afff77f87323e5df3d4cea5fee3e55fe863b7d0bf599", size = 274706, upload-time = "2026-05-27T22:33:49.863Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/80/91/88f5a39809791a49eea760753d8bb5c7ed966a1789b1061cf9a07f6fe6dc/sae_lens-6.44.2-py3-none-any.whl", hash = "sha256:b48e6702b6dd8a9eed3deb99d52e64fdce22af6469f64f7495ab5f91e0ee6272", size = 311023, upload-time = "2026-05-27T22:33:48.301Z" },
-]
-
-[[package]]
-name = "sae-nla-rnd"
-version = "0.1.0"
+name = "sae-feature-atlas"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
@@ -3255,6 +3231,30 @@ dev = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "ruff" },
+]
+
+[[package]]
+name = "sae-lens"
+version = "6.44.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "babe" },
+    { name = "datasets" },
+    { name = "nltk" },
+    { name = "plotly" },
+    { name = "plotly-express" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "simple-parsing" },
+    { name = "tenacity" },
+    { name = "transformer-lens" },
+    { name = "transformers" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/06/53efbbab94c9ec2c59fed53edd3669efdca82eb9b05458374a77e022361f/sae_lens-6.44.2.tar.gz", hash = "sha256:277279194ff70e544694afff77f87323e5df3d4cea5fee3e55fe863b7d0bf599", size = 274706, upload-time = "2026-05-27T22:33:49.863Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/91/88f5a39809791a49eea760753d8bb5c7ed966a1789b1061cf9a07f6fe6dc/sae_lens-6.44.2-py3-none-any.whl", hash = "sha256:b48e6702b6dd8a9eed3deb99d52e64fdce22af6469f64f7495ab5f91e0ee6272", size = 311023, upload-time = "2026-05-27T22:33:48.301Z" },
 ]
 
 [[package]]

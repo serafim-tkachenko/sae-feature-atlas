@@ -6,14 +6,7 @@ from typing import Any
 
 
 def ensure_project_dirs() -> None:
-    for path in [
-        "data/raw",
-        "data/processed",
-        "reports",
-        "scripts",
-        "src",
-        "notebooks",
-    ]:
+    for path in ["data/raw", "data/processed", "reports", "scripts", "src", "notebooks"]:
         Path(path).mkdir(parents=True, exist_ok=True)
 
 
