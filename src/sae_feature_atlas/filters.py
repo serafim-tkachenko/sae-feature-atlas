@@ -23,6 +23,9 @@ def apply_activation_row_filters(
 
     if cfg.exclude_token_positions:
         filtered = filtered[~filtered["token_pos"].isin(cfg.exclude_token_positions)]
+        
+    if cfg.exclude_token_positions_ge is not None:
+        filtered = filtered[filtered["token_pos"] < cfg.exclude_token_positions_ge]
 
     if cfg.exclude_token_strings:
         filtered = filtered[~filtered["token_str"].isin(cfg.exclude_token_strings)]

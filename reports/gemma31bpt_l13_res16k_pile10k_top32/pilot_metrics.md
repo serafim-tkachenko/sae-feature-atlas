@@ -29,3 +29,17 @@ Run: `gemma31bpt_l13_res16k_pile10k_top32`
 - Coactivation output is capped at the top 100k pairs
 - Bimodality candidates are statistical candidates and require manual inspection
 - This is a single-layer pilot, not yet a final multi-layer analysis
+
+## Geometry vs co-activation
+
+After fixing the quadrant thresholding to compute the high-coactivation threshold only over positive-Jaccard pairs, the pilot run produced:
+
+- low cosine / low coactivation: 131,380 pairs
+- high cosine / low coactivation: 14,574 pairs
+- low cosine / high coactivation: 398 pairs
+- high cosine / high coactivation: 68 pairs
+
+The cosine threshold was 0.519 and the high-coactivation Jaccard threshold was 0.096.
+
+This suggests that decoder-neighbor geometry and empirical same-token coactivation are related but not equivalent.
+The most interesting candidates for manual inspection are the disagreement cases: high-cosine/low-coactivation pairs and low-cosine/high-coactivation pairs.

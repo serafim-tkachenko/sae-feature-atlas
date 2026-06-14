@@ -45,6 +45,7 @@ class CollectionConfig:
 @dataclass(frozen=True)
 class ActivationRowFilterConfig:
     exclude_token_positions: tuple[int, ...] = (0,)
+    exclude_token_positions_ge: int | None = None
     exclude_token_strings: tuple[str, ...] = ("<bos>",)
     exclude_token_substrings: tuple[str, ...] = ("â", "€", "™")
     include_sources: tuple[str, ...] | None = None
