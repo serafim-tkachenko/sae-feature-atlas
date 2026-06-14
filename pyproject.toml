@@ -1,6 +1,6 @@
 [project]
 name = "sae-feature-atlas"
-version = "0.2.0"
+version = "0.3.0"
 description = "Research toolkit for building SAE feature atlases over Gemma Scope models."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -20,6 +20,7 @@ dependencies = [
     "pyarrow",
     "numpy",
     "scikit-learn",
+    "umap-learn",
     "scipy",
     "tqdm",
     "matplotlib",

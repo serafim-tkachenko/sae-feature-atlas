@@ -63,4 +63,4 @@ class GemmaScopeBundle:
 
     def _require_loaded(self) -> None:
         if self.model is None or self.sae is None or self.device is None:
-            raise RuntimeError("Bundle is not loaded - call bundle.load() first")
+            raise RuntimeError("Bundle is not loaded. Call bundle.load() first.")

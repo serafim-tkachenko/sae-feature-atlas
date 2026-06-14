@@ -28,7 +28,7 @@ The library automatically resolves the Gemma Scope SAE
 
 If `activation_mode=topk`, feature frequency means:
 
--> how often the feature appears among the saved top-K activations.
+-> how often the feature appears among the saved top-K activations
 
 It does not mean:
 

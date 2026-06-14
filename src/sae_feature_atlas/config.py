@@ -69,6 +69,15 @@ class AnalysisConfig:
     bimodality_min_points: int = 100
     top_examples_per_feature: int = 20
     context_window: int = 20
+    inspection_top_features: int = 30
+    inspection_top_pairs: int = 30
+    pca_components: int = 20
+    pca_scatter_sample: int = 5000
+    umap_neighbors: int = 30
+    umap_min_dist: float = 0.10
+    umap_metric: str = "cosine"
+    umap_random_state: int = 42
+    lda_min_class_size: int = 20
 
 
 @dataclass(frozen=True)
@@ -149,6 +158,34 @@ class ExperimentConfig:
         return self.run_data_dir / "bimodal_feature_candidates.parquet"
 
     @property
+    def residual_pca_summary_path(self) -> Path:
+        return self.run_data_dir / "residual_pca_summary.parquet"
+
+    @property
+    def decoder_pca_summary_path(self) -> Path:
+        return self.run_data_dir / "decoder_pca_summary.parquet"
+
+    @property
+    def decoder_feature_pca_path(self) -> Path:
+        return self.run_data_dir / "decoder_feature_pca.parquet"
+
+    @property
+    def decoder_feature_umap_path(self) -> Path:
+        return self.run_data_dir / "decoder_feature_umap.parquet"
+
+    @property
+    def decoder_feature_lda_path(self) -> Path:
+        return self.run_data_dir / "decoder_feature_lda.parquet"
+
+    @property
+    def inspection_feature_summaries_path(self) -> Path:
+        return self.run_data_dir / "inspection_feature_summaries.parquet"
+
+    @property
+    def inspection_pair_summaries_path(self) -> Path:
+        return self.run_data_dir / "inspection_pair_summaries.parquet"
+
+    @property
     def manifest_path(self) -> Path:
         return self.run_reports_dir / "manifest.json"
 
@@ -159,3 +196,11 @@ class ExperimentConfig:
     @property
     def html_report_path(self) -> Path:
         return self.run_reports_dir / "index.html"
+
+    @property
+    def inspection_report_md_path(self) -> Path:
+        return self.run_reports_dir / "inspection_report.md"
+
+    @property
+    def inspection_report_json_path(self) -> Path:
+        return self.run_reports_dir / "inspection_report.json"
