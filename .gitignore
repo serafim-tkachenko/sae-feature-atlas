@@ -6,6 +6,7 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 
 # Virtual environments
 .venv/
@@ -20,7 +21,7 @@ hf_cache/
 wandb/
 runs/
 
-# Data artifacts: keep generated data outside Git
+# Generated data artifacts
 data/raw/*.jsonl
 data/raw/*.json
 data/raw/*.txt
@@ -29,9 +30,12 @@ data/processed/**/*.npy
 data/processed/**/*.csv
 data/processed/**/*.json
 
-# Generated run metadata can be large/noisy; commit only curated reports manually
+# Generated reports may be large/noisy; commit only curated reports manually
 reports/**/manifest.json
-reports/**/metrics.json
+reports/**/plots/
+reports/**/tables/
+reports/**/index.html
+reports/**/summary.md
 
 # Large local outputs
 outputs/

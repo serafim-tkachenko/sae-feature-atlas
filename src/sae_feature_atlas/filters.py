@@ -10,7 +10,6 @@ def apply_activation_row_filters(
     acts: pd.DataFrame,
     cfg: ActivationRowFilterConfig,
 ) -> pd.DataFrame:
-    """Apply generic row-level filters before feature statistics."""
     filtered = acts.copy()
 
     if cfg.require_finite_activation:

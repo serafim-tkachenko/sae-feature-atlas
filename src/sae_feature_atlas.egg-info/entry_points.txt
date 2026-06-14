@@ -1,0 +1,2 @@
+[console_scripts]
+sae-atlas = sae_feature_atlas.app:main

@@ -2,24 +2,41 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+ActivationMode = Literal["topk", "positive"]
+
+
+@dataclass(frozen=True)
+class ModelSelection:
+    model: str = "gemma-3-1b-pt"
+    layer: int | None = None
+    site: str = "resid_post"
+    width: str = "16k"
+    l0: str = "medium"
 
 
 @dataclass(frozen=True)
 class ModelConfig:
-    model_name: str = "google/gemma-3-1b-pt"
-    sae_release: str = "gemma-scope-2-1b-pt-res"
-    sae_id: str = "layer_13_width_16k_l0_medium"
-    layer: int = 13
-    hook_name: str = "blocks.13.hook_resid_post"
-    d_model: int = 1152
-    d_sae: int = 16384
+    model_name: str
+    sae_release: str
+    sae_id: str
+    layer: int
+    hook_name: str
+    site: str = "resid_post"
+    width: str = "16k"
+    l0: str = "medium"
+    d_model: int | None = None
+    d_sae: int | None = None
 
 
 @dataclass(frozen=True)
 class CollectionConfig:
-    run_name: str = "gemma3_1b_l13_res16k_mixed_top64"
+    run_name: str
+    corpus: str = "pile-10k"
     max_texts: int = 1500
     max_seq_len: int = 256
+    activation_mode: ActivationMode = "topk"
     top_k_features_per_token: int = 64
     residual_sample_stride: int = 8
     random_seed: int = 42
@@ -41,7 +58,17 @@ class FeatureFilterConfig:
     min_feature_token_count: int = 50
     min_feature_text_count: int = 10
     max_feature_token_frequency: float = 0.20
-    
+
+
+@dataclass(frozen=True)
+class AnalysisConfig:
+    coactivation_max_pairs: int = 100_000
+    decoder_neighbors_top_k: int = 20
+    decoder_neighbors_batch_size: int = 512
+    bimodality_min_points: int = 100
+    top_examples_per_feature: int = 20
+    context_window: int = 20
+
 
 @dataclass(frozen=True)
 class PathsConfig:
@@ -52,10 +79,11 @@ class PathsConfig:
 
 @dataclass(frozen=True)
 class ExperimentConfig:
-    model: ModelConfig = ModelConfig()
-    collection: CollectionConfig = CollectionConfig()
+    model: ModelConfig
+    collection: CollectionConfig
     activation_filter: ActivationRowFilterConfig = ActivationRowFilterConfig()
     feature_filter: FeatureFilterConfig = FeatureFilterConfig()
+    analysis: AnalysisConfig = AnalysisConfig()
     paths: PathsConfig = PathsConfig()
 
     @property
@@ -72,7 +100,12 @@ class ExperimentConfig:
 
     @property
     def sae_activations_path(self) -> Path:
-        return self.run_data_dir / "sae_activations_topk.parquet"
+        suffix = "positive" if self.collection.activation_mode == "positive" else "topk"
+        return self.run_data_dir / f"sae_activations_{suffix}.parquet"
+
+    @property
+    def token_activation_summary_path(self) -> Path:
+        return self.run_data_dir / "token_activation_summary.parquet"
 
     @property
     def residual_vectors_path(self) -> Path:
@@ -99,8 +132,29 @@ class ExperimentConfig:
         return self.run_data_dir / "feature_cards.parquet"
 
     @property
+    def coactivation_pairs_path(self) -> Path:
+        return self.run_data_dir / "coactivation_pairs.parquet"
+
+    @property
+    def decoder_neighbors_path(self) -> Path:
+        return self.run_data_dir / "decoder_neighbors.parquet"
+
+    @property
+    def geometry_vs_coactivation_path(self) -> Path:
+        return self.run_data_dir / "geometry_vs_coactivation.parquet"
+
+    @property
+    def bimodal_candidates_path(self) -> Path:
+        return self.run_data_dir / "bimodal_feature_candidates.parquet"
+
+    @property
     def manifest_path(self) -> Path:
         return self.run_reports_dir / "manifest.json"
 
+    @property
+    def summary_md_path(self) -> Path:
+        return self.run_reports_dir / "summary.md"
 
-CFG = ExperimentConfig()
+    @property
+    def html_report_path(self) -> Path:
+        return self.run_reports_dir / "index.html"

@@ -1,9 +1,12 @@
 [project]
-name = "sae_feature_atlas"
-version = "0.1.0"
-description = "SAE feature-card pipeline for Gemma 3 + Gemma Scope 2, with future NLA/steering extensions"
+name = "sae-feature-atlas"
+version = "0.2.0"
+description = "Research toolkit for building SAE feature atlases over Gemma Scope models."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
+authors = [
+    { name = "Serafim Tkachenko" }
+]
 
 dependencies = [
     "torch",
@@ -29,6 +32,9 @@ dev = [
     "jupyter",
     "ruff",
 ]
+
+[project.scripts]
+sae-atlas = "sae_feature_atlas.app:main"
 
 [tool.uv]
 package = true
