@@ -30,12 +30,11 @@ data/processed/**/*.npy
 data/processed/**/*.csv
 data/processed/**/*.json
 
-# Generated reports may be large/noisy; commit only curated reports manually
-reports/**/manifest.json
+# Generated reports: commit only curated report snippets manually
+reports/**/*.json
 reports/**/plots/
 reports/**/tables/
 reports/**/index.html
-reports/**/summary.md
 
 # Large local outputs
 outputs/
@@ -46,9 +45,3 @@ models/
 .DS_Store
 .vscode/
 .idea/
-
-# Generated report machine-readable artifacts
-reports/**/*.json
-reports/**/plots/
-reports/**/tables/
-reports/**/index.html
