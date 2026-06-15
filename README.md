@@ -132,7 +132,6 @@ reports/<run_name>/inspection_report.md
 - [Feature cards](docs/feature_cards.md)
 - [Corpus guide](docs/corpus_guide.md)
 - [Geometry methods](docs/geometry_methods.md)
-- [Scientific roadmap](docs/scientific_roadmap.md)
 
 ## License
 
