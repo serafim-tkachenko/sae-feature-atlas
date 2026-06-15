@@ -46,3 +46,9 @@ models/
 .DS_Store
 .vscode/
 .idea/
+
+# Generated report machine-readable artifacts
+reports/**/*.json
+reports/**/plots/
+reports/**/tables/
+reports/**/index.html
