@@ -13,6 +13,7 @@ from sae_feature_atlas.config import (
     PathsConfig,
 )
 from sae_feature_atlas.registry import make_config, resolve_gemma_scope_sae
+from sae_feature_atlas.labels import assign_feature_labels, primary_label
 
 __all__ = [
     "ActivationMode",
@@ -27,4 +28,6 @@ __all__ = [
     "PathsConfig",
     "make_config",
     "resolve_gemma_scope_sae",
+    "assign_feature_labels",
+    "primary_label",
 ]

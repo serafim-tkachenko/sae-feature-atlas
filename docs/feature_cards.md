@@ -1,38 +1,84 @@
 # Feature cards
 
-The central output of the library is:
+The central artifact is:
 
 ```text
 data/processed/<run_name>/feature_cards.parquet
 ```
 
-Each row corresponds to one SAE feature
+Each row describes one SAE feature
 
-## Core columns
+A feature card should answer:
 
-| Column | Meaning |
-|---|---|
-| `feature_id` | SAE feature index |
-| `n_token_activations` | Number of saved activation rows for this feature |
-| `n_texts` | Number of texts where the feature appears |
-| `token_frequency` | Frequency under the current activation storage mode |
-| `text_frequency` | Fraction of texts where the feature appears |
-| `mean_activation` | Mean saved activation |
-| `max_activation` | Max saved activation |
-| `p95_activation` | 95th percentile |
-| `p99_activation` | 99th percentile |
-| `top_examples_json` | Top activating examples with contexts |
+1. How often does the feature appear?
+2. How strong are its activations?
+3. What are its top examples?
+4. Is it likely an artifact?
+5. What features co-activate with it?
+6. What decoder directions are close?
+7. Is its activation distribution potentially bimodal?
+8. Should a human inspect it?
 
-## Analysis columns
+## Column groups
 
-Later pipeline steps can add or support:
+### Identity
 
-| Column | Meaning |
-|---|---|
-| `coactivation_neighbors_json` | Strong same-token co-activation neighbors |
-| `decoder_neighbors_json` | Nearest decoder directions |
-| `bimodality_json` | Activation distribution mode information |
-| `pca_alignment_json` | Alignment with residual PCA components |
-| `natural_language_explanation` | Future NLA/SAEExplainer label |
-| `human_notes` | Human annotation |
-| `tags` | Optional tags |
+- `feature_id`
+- `model_name`
+- `layer`
+- `hook_name`
+- `sae_release`
+- `sae_id`
+- `run_name`
+- `corpus`
+- `activation_mode`
+- `top_k`
+
+### Activation statistics
+
+- `n_token_activations`
+- `n_texts`
+- `token_frequency`
+- `text_frequency`
+- `mean_activation`
+- `p50_activation`
+- `p95_activation`
+- `p99_activation`
+- `max_activation`
+
+### Examples
+
+- `top_examples_json`
+
+### Automated inspection
+
+- `artifact_score`
+- `manual_priority`
+- `inspection_labels`
+- `top_tokens_json`
+- `top_positions_json`
+- `quote_share`
+- `punctuation_share`
+- `boundary_share`
+- `source_concentration`
+
+### Co-activation
+
+- `top_coactivation_neighbors_json`
+- `max_coactivation_jaccard`
+- `max_coactivation_pmi`
+
+### Decoder geometry
+
+- `top_decoder_neighbors_json`
+- `max_decoder_cosine`
+- `decoder_pc1`
+- `decoder_pc2`
+
+### Bimodality
+
+- `bimodality_score`
+- `log_mean_low`
+- `log_mean_high`
+- `activation_p50`
+- `activation_p95`

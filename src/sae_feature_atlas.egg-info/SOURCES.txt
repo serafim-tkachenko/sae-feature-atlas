@@ -12,12 +12,15 @@ src/sae_feature_atlas/feature_cards.py
 src/sae_feature_atlas/feature_stats.py
 src/sae_feature_atlas/filters.py
 src/sae_feature_atlas/geometry.py
+src/sae_feature_atlas/inspection.py
 src/sae_feature_atlas/io_utils.py
+src/sae_feature_atlas/labels.py
 src/sae_feature_atlas/loaders.py
 src/sae_feature_atlas/manifest.py
 src/sae_feature_atlas/pipeline.py
 src/sae_feature_atlas/registry.py
 src/sae_feature_atlas/reporting.py
+src/sae_feature_atlas/space_analysis.py
 src/sae_feature_atlas/visualization.py
 src/sae_feature_atlas.egg-info/PKG-INFO
 src/sae_feature_atlas.egg-info/SOURCES.txt

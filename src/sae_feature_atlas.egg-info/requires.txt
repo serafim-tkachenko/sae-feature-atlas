@@ -9,6 +9,7 @@ pandas
 pyarrow
 numpy
 scikit-learn
+umap-learn
 scipy
 tqdm
 matplotlib

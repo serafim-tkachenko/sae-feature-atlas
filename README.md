@@ -1,53 +1,16 @@
 # SAE Feature Atlas
 
-`sae_feature_atlas` is a research toolkit for building SAE feature atlases over Gemma Scope models
+`sae_feature_atlas` is a research toolkit for building interpretable feature atlases over Gemma Scope SAEs
 
-It is designed for the workflow we want:
+The intended workflow is:
 
 ```text
 choose model + layer
--> automatically resolve the corresponding Gemma Scope SAE
--> choose corpus and activation storage mode
+-> automatically resolve the matching Gemma Scope SAE
+-> choose corpus and activation-storage mode
 -> run one configurable pipeline
--> get feature cards, analysis tables, plots, and a readable report
--> build custom research on top of the generated feature-card dataset
-```
-
-The library is intentionally focused on Gemma + Gemma Scope 2 today, but the structure is meant to be extensible
-
-## Main user workflow
-
-Run a complete feature-atlas pipeline:
-
-```bash
-uv run sae-atlas run \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --corpus pile-10k \
-  --max-texts 1500 \
-  --max-seq-len 256 \
-  --activation-mode topk \
-  --top-k 64 \
-  --steps all
-```
-
-The library automatically resolves:
-
-```text
-model=gemma-3-1b-pt
-layer=13
-site=resid_post
-width=16k
-l0=medium
-```
-
-into:
-
-```text
-model_name=google/gemma-3-1b-pt
-sae_release=gemma-scope-2-1b-pt-res
-sae_id=layer_13_width_16k_l0_medium
-hook_name=blocks.13.hook_resid_post
+-> get feature cards, analysis tables, plots, automated inspection, and a readable report
+-> use the generated feature-card dataset for downstream interpretability research
 ```
 
 ## Quick start
@@ -65,81 +28,58 @@ Smoke test:
 uv run sae-atlas smoke-test --model gemma-3-1b-pt --layer 13
 ```
 
-Run a small debug pipeline:
+Small local run:
 
 ```bash
 uv run sae-atlas run \
   --model gemma-3-1b-pt \
   --layer 13 \
+  --corpus pile-10k \
   --max-texts 100 \
   --top-k 32 \
-  --steps collect,features,report
+  --steps all
 ```
 
-Run a stronger pilot:
+Serious pilot:
 
 ```bash
 uv run sae-atlas run \
   --model gemma-3-1b-pt \
   --layer 13 \
-  --max-texts 1500 \
+  --corpus mixed-research \
+  --max-texts 500 \
   --top-k 64 \
   --steps all
 ```
 
-Try a 4B pilot:
+## Pipeline steps
 
-```bash
-uv run sae-atlas smoke-test \
-  --model gemma-3-4b-pt \
-  --layer 12 \
-  --l0 small
+```text
+collect                    collect model residuals and SAE activations
+features                   build feature statistics and top examples
+coactivation               compute same-token feature co-activation
+geometry                   compute nearest SAE decoder directions
+geometry-vs-coactivation   compare decoder geometry with empirical co-activation
+bimodality                 find activation-distribution bimodality candidates
+space                      analyze residual-space and decoder feature-space PCA
+inspection                 generate automated feature/pair triage reports
+cards                      enrich feature_cards.parquet with all available metrics
+report                     generate Markdown/HTML reports and plots
 ```
 
-Then:
+`--steps all` runs the complete pipeline in a sensible order.
 
-```bash
-uv run sae-atlas run \
-  --model gemma-3-4b-pt \
-  --layer 12 \
-  --l0 small \
-  --max-texts 200 \
-  --top-k 32 \
-  --steps collect,features,report
+## Corpus choices
+
+```text
+pile-10k              diverse small Pile sample - good debug/default pilot corpus
+tinystories           simple narrative text - useful smoke test but narrow
+fineweb-edu-sample    streaming educational web sample - better quality, heavier
+mixed-research        mixed Pile + educational/manual technical snippets
+jsonl:/path/file.jsonl custom corpus with {"source", "text"} rows
 ```
 
-## Colab workflow
-
-```python
-!git clone https://github.com/serafim-tkachenko/sae-feature-atlas.git
-%cd sae-feature-atlas
-
-!curl -LsSf https://astral.sh/uv/install.sh | sh
-!~/.local/bin/uv sync
-```
-
-Log in to Hugging Face:
-
-```python
-from huggingface_hub import notebook_login
-notebook_login()
-```
-
-Run:
-
-```python
-!~/.local/bin/uv run sae-atlas smoke-test --model gemma-3-1b-pt --layer 13
-!~/.local/bin/uv run sae-atlas run --model gemma-3-1b-pt --layer 13 --steps all
-```
-
-If Colab has environment conflicts:
-
-```python
-!~/.local/bin/uv pip install --system -e .
-!sae-atlas smoke-test --model gemma-3-1b-pt --layer 13
-```
-
-## Activation storage modes
+## Activation modes
 
 ### `topk`
 
@@ -147,17 +87,9 @@ If Colab has environment conflicts:
 --activation-mode topk --top-k 64
 ```
 
-Stores only the strongest K SAE features per token
+Stores the strongest K SAE features per token. Good for bounded storage and fast first-pass feature cards
 
-Pros:
-
-- bounded storage,
-- fast,
-- good for first-pass feature cards and co-activation
-
-Caveat:
-
-- feature frequency means "frequency of appearing in top-K", not true positive activation frequency
+Caveat: feature frequency means **frequency of appearing among saved top-K features**, not true positive activation frequency
 
 ### `positive`
 
@@ -165,19 +97,9 @@ Caveat:
 --activation-mode positive
 ```
 
-Stores all features with positive activation
+Stores all positive SAE features - larger and slower
 
-Pros:
-
-- more faithful for frequency/co-activation
-
-Caveat:
-
-- larger files,
-- slower,
-- more RAM/storage pressure
-
-## Generated outputs
+## Main outputs
 
 A run writes to:
 
@@ -186,72 +108,31 @@ data/processed/<run_name>/
 reports/<run_name>/
 ```
 
-Typical data artifacts:
+Important outputs:
 
 ```text
-token_metadata.parquet
-sae_activations_topk.parquet
-token_activation_summary.parquet
-residual_vectors_sample.npy
-residual_vectors_metadata.parquet
-feature_stats.parquet
-filtered_features.parquet
-top_feature_examples.parquet
 feature_cards.parquet
+inspection_feature_summaries.parquet
+inspection_pair_summaries.parquet
 coactivation_pairs.parquet
 decoder_neighbors.parquet
 geometry_vs_coactivation.parquet
 bimodal_feature_candidates.parquet
-```
-
-Typical report artifacts:
-
-```text
-reports/<run_name>/manifest.json
-reports/<run_name>/summary.md
+residual_pca_summary.parquet
+decoder_pca_summary.parquet
+decoder_feature_pca.parquet
 reports/<run_name>/index.html
-reports/<run_name>/plots/*.png
-reports/<run_name>/tables/*.html
+reports/<run_name>/inspection_report.md
 ```
 
-## Library usage
+## Documentation
 
-```python
-from sae_feature_atlas import GemmaScopeBundle
-from sae_feature_atlas.registry import make_config
-
-cfg = make_config(model="gemma-3-1b-pt", layer=13, max_texts=100, top_k=64)
-bundle = GemmaScopeBundle(cfg).load()
-
-print(bundle.validate())
-
-values, indices = bundle.topk_features("The Eiffel Tower is in Paris.", top_k=10)
-print(indices)
-```
-
-## Git policy
-
-Commit:
-
-```text
-pyproject.toml
-uv.lock
-README.md
-docs/
-src/
-scripts/
-examples/
-notebooks/ # only curated notebooks
-reports/ # only hand-written reports or .gitkeep files
-```
-
-Do not commit generated data:
-
-```text
-data/raw/*.jsonl
-data/processed/**/*.parquet
-data/processed/**/*.npy
-```
+- [Project overview](docs/project_overview.md)
+- [Metrics guide](docs/metrics_guide.md)
+- [Feature cards](docs/feature_cards.md)
+- [Corpus guide](docs/corpus_guide.md)
+- [Geometry methods](docs/geometry_methods.md)
+- [Scientific roadmap](docs/scientific_roadmap.md)
 
 ## License
 

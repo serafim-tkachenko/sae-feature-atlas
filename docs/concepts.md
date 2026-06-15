@@ -17,8 +17,8 @@ A feature card is one row per SAE feature - it is the main reusable artifact
 
 ## Decoder geometry vs co-activation
 
-Two features can be close in SAE decoder space but not co-activate, or co-activate often while pointing in different decoder directions. These disagreement cases are often interesting
+Two features can be close in SAE decoder space but not co-activate, or co-activate often while pointing in different decoder directions
 
 ## Bimodality
 
-Some features may have weak and strong activation regimes - this can matter for explanations and steering.
+Some features may have weak and strong activation regimes - this can matter for explanations and steering
