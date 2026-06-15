@@ -35,6 +35,8 @@ reports/**/*.json
 reports/**/plots/
 reports/**/tables/
 reports/**/index.html
+# Remove for manual reports later
+reports/**/*.md
 
 # Large local outputs
 outputs/
@@ -45,3 +47,7 @@ models/
 .DS_Store
 .vscode/
 .idea/
+
+# Python packaging/build artifacts
+*.egg-info/
+src/*.egg-info/
