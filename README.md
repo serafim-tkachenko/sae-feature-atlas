@@ -19,7 +19,7 @@ choose model + layer
 git clone https://github.com/serafim-tkachenko/sae-feature-atlas.git
 cd sae-feature-atlas
 uv sync
-uv run huggingface-cli login
+uv run hf auth login
 ```
 
 Smoke test:
