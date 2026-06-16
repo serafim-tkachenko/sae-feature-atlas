@@ -8,8 +8,8 @@ from typing import Any
 
 import pandas as pd
 
-from sae_feature_atlas.config import ExperimentConfig
-from sae_feature_atlas.visualization import generate_html_tables, generate_plots
+from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.report.visualization import generate_html_tables, generate_plots
 
 
 # -----------------------------------------------------------------------------

@@ -5,33 +5,33 @@ import json
 import pandas as pd
 
 from sae_feature_atlas.activations import collect_sparse_sae_activations
-from sae_feature_atlas.bimodality import compute_bimodality_candidates
-from sae_feature_atlas.coactivation import compute_same_token_coactivation
-from sae_feature_atlas.config import ExperimentConfig
-from sae_feature_atlas.coverage import compute_feature_coverage_profiles
-from sae_feature_atlas.datasets import build_text_dataset, build_token_metadata, save_text_dataset
+from sae_feature_atlas.analysis.bimodality import compute_bimodality_candidates
+from sae_feature_atlas.analysis.coactivation import compute_same_token_coactivation
+from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.analysis.coverage import compute_feature_coverage_profiles
+from sae_feature_atlas.config.datasets import build_text_dataset, build_token_metadata, save_text_dataset
 from sae_feature_atlas.feature_cards import build_and_save_feature_outputs, enrich_feature_cards
 from sae_feature_atlas.filters import apply_activation_row_filters
-from sae_feature_atlas.geometry import compute_decoder_neighbors, merge_geometry_with_coactivation
-from sae_feature_atlas.graph_alignment import compute_graph_alignment
-from sae_feature_atlas.inspection import (
+from sae_feature_atlas.analysis.geometry import compute_decoder_neighbors, merge_geometry_with_coactivation
+from sae_feature_atlas.analysis.graph_alignment import compute_graph_alignment
+from sae_feature_atlas.analysis.inspection import (
     feature_summaries_to_frame,
     pair_summaries_to_frame,
     summarize_features_batch,
     summarize_pair,
     write_inspection_reports,
 )
-from sae_feature_atlas.io_utils import ensure_project_dirs
-from sae_feature_atlas.loaders import get_device, load_model, load_sae, validate_model_sae_compatibility
-from sae_feature_atlas.manifest import build_run_manifest, write_run_manifest
-from sae_feature_atlas.reporting import write_report
-from sae_feature_atlas.space_analysis import (
+from sae_feature_atlas.util.io_utils import ensure_project_dirs
+from sae_feature_atlas.pipeline.loaders import get_device, load_model, load_sae, validate_model_sae_compatibility
+from sae_feature_atlas.pipeline.manifest import build_run_manifest, write_run_manifest
+from sae_feature_atlas.report.reporting import write_report
+from sae_feature_atlas.analysis.space_analysis import (
     compute_decoder_lda,
     compute_decoder_pca,
     compute_decoder_umap,
     compute_residual_pca,
 )
-from sae_feature_atlas.steering_candidates import score_steering_candidates
+from sae_feature_atlas.analysis.steering_candidates import score_steering_candidates
 
 CORE_STEPS = ["collect"]
 

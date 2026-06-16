@@ -4,7 +4,7 @@ import torch
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
 
-from sae_feature_atlas.config import ExperimentConfig
+from sae_feature_atlas.config.config import ExperimentConfig
 
 
 def get_device() -> str:
@@ -20,7 +20,7 @@ def load_sae(cfg: ExperimentConfig, device: str) -> SAE:
 
 
 def load_model(cfg: ExperimentConfig, device: str) -> HookedTransformer:
-    # bfloat16 is intentional: float16 produced NaNs in the initial Gemma 3 run.
+    # bfloat16 is intentional - float16 produced NaNs in the initial Gemma 3 runs
     model = HookedTransformer.from_pretrained(
         cfg.model.model_name,
         device=device,

@@ -3,10 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 
-from sae_feature_atlas.bundle import GemmaScopeBundle
-from sae_feature_atlas.pipeline import ALL_STEPS, STEP_PRESETS, run_pipeline
-from sae_feature_atlas.registry import list_supported_models, make_config
-from sae_feature_atlas.reporting import write_report
+from sae_feature_atlas.pipeline.bundle import GemmaScopeBundle
+from sae_feature_atlas.pipeline.pipeline import ALL_STEPS, STEP_PRESETS, run_pipeline
+from sae_feature_atlas.config.registry import list_supported_models, make_config
+from sae_feature_atlas.report.reporting import write_report
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:

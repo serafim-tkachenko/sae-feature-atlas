@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from sae_feature_atlas.geometry import get_decoder_weight
+from sae_feature_atlas.analysis.geometry import get_decoder_weight
 
 
 _EPS = 1e-12

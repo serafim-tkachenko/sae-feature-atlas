@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import torch
 
-from sae_feature_atlas.config import ExperimentConfig
-from sae_feature_atlas.loaders import (
+from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.pipeline.loaders import (
     get_device,
     load_model,
     load_sae,

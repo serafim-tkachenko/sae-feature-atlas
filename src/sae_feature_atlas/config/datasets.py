@@ -6,8 +6,8 @@ import pandas as pd
 from datasets import load_dataset
 from tqdm import tqdm
 
-from sae_feature_atlas.config import ExperimentConfig
-from sae_feature_atlas.io_utils import read_jsonl, write_jsonl
+from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.util.io_utils import read_jsonl, write_jsonl
 
 MANUAL_TEXTS: list[tuple[str, str]] = [
     ("manual_code", "Python functions, classes, loops, and dictionaries organize computation."),

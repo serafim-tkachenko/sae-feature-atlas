@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from sae_feature_atlas.config import ActivationRowFilterConfig, FeatureFilterConfig
+from sae_feature_atlas.config.config import ActivationRowFilterConfig, FeatureFilterConfig
 
 
 def apply_activation_row_filters(acts: pd.DataFrame, cfg: ActivationRowFilterConfig) -> pd.DataFrame:

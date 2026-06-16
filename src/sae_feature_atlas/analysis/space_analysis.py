@@ -6,8 +6,8 @@ from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.preprocessing import LabelEncoder
 
-from sae_feature_atlas.geometry import get_decoder_weight
-from sae_feature_atlas.labels import primary_label
+from sae_feature_atlas.analysis.geometry import get_decoder_weight
+from sae_feature_atlas.analysis.labels import primary_label
 
 
 def compute_residual_pca(residual_vectors_path, n_components: int = 20) -> pd.DataFrame:

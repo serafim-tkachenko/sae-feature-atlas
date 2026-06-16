@@ -1,33 +1,3 @@
-"""SAE Feature Atlas public API."""
-
-from sae_feature_atlas.bundle import GemmaScopeBundle
-from sae_feature_atlas.config import (
-    ActivationMode,
-    ActivationRowFilterConfig,
-    AnalysisConfig,
-    CollectionConfig,
-    ExperimentConfig,
-    FeatureFilterConfig,
-    ModelConfig,
-    ModelSelection,
-    PathsConfig,
-)
-from sae_feature_atlas.registry import make_config, resolve_gemma_scope_sae
-from sae_feature_atlas.labels import assign_feature_labels, primary_label
-
-__all__ = [
-    "ActivationMode",
-    "ActivationRowFilterConfig",
-    "AnalysisConfig",
-    "CollectionConfig",
-    "ExperimentConfig",
-    "FeatureFilterConfig",
-    "GemmaScopeBundle",
-    "ModelConfig",
-    "ModelSelection",
-    "PathsConfig",
-    "make_config",
-    "resolve_gemma_scope_sae",
-    "assign_feature_labels",
-    "primary_label",
-]
+"""SAE Feature Atlas API"""
+# We don't have an API yet - can be added later if needed for external integrations
+__all__:list[str] = []
