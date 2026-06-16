@@ -4,7 +4,7 @@ import torch
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
 
-from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.config.schema import ExperimentConfig
 
 
 def get_device() -> str:

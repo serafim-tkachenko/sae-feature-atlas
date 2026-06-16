@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from sae_feature_atlas.config.config import (
+from sae_feature_atlas.config.schema import (
     ActivationMode,
     CollectionConfig,
     ExperimentConfig,

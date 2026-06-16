@@ -4,9 +4,9 @@ import json
 
 import pandas as pd
 
-from sae_feature_atlas.config.config import ExperimentConfig
-from sae_feature_atlas.feature_stats import build_top_examples, compute_feature_stats
-from sae_feature_atlas.filters import apply_activation_row_filters, apply_feature_filters
+from sae_feature_atlas.config.schema import ExperimentConfig
+from sae_feature_atlas.analysis.feature_stats import build_top_examples, compute_feature_stats
+from sae_feature_atlas.analysis.feature_filters import apply_activation_row_filters, apply_feature_filters
 from sae_feature_atlas.analysis.labels import assign_feature_labels
 
 

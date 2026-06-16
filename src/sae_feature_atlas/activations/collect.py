@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from sae_feature_atlas.config.config import ExperimentConfig
+from sae_feature_atlas.config.schema import ExperimentConfig
 
 
 def _append_topk_rows(

@@ -3,10 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 
-from sae_feature_atlas.pipeline.bundle import GemmaScopeBundle
-from sae_feature_atlas.pipeline.pipeline import ALL_STEPS, STEP_PRESETS, run_pipeline
+from sae_feature_atlas.runtime.gemma_scope import GemmaScopeRuntime
+from sae_feature_atlas.pipeline.runner import ALL_STEPS, STEP_PRESETS, run_pipeline
 from sae_feature_atlas.config.registry import list_supported_models, make_config
-from sae_feature_atlas.report.reporting import write_report
+from sae_feature_atlas.report.markdown import write_report
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -58,7 +58,7 @@ def cmd_resolve_sae(args: argparse.Namespace) -> None:
 
 
 def cmd_smoke_test(args: argparse.Namespace) -> None:
-    print(json.dumps(GemmaScopeBundle(cfg_from_args(args)).load().validate(), indent=2))
+    print(json.dumps(GemmaScopeRuntime(cfg_from_args(args)).load().validate(), indent=2))
 
 
 def cmd_run(args: argparse.Namespace) -> None:

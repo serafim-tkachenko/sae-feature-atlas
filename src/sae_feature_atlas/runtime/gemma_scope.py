@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import torch
 
-from sae_feature_atlas.config.config import ExperimentConfig
-from sae_feature_atlas.pipeline.loaders import (
+from sae_feature_atlas.config.schema import ExperimentConfig
+from sae_feature_atlas.runtime.loaders import (
     get_device,
     load_model,
     load_sae,
@@ -14,13 +14,13 @@ from sae_feature_atlas.pipeline.loaders import (
 
 
 @dataclass
-class GemmaScopeBundle:
+class GemmaScopeRuntime:
     cfg: ExperimentConfig
     device: str | None = None
     model: object | None = None
     sae: object | None = None
 
-    def load(self) -> "GemmaScopeBundle":
+    def load(self) -> "GemmaScopeRuntime":
         self.device = self.device or get_device()
         self.sae = load_sae(self.cfg, self.device)
         self.model = load_model(self.cfg, self.device)
