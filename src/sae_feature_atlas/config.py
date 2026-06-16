@@ -46,7 +46,7 @@ class CollectionConfig:
 class ActivationRowFilterConfig:
     exclude_token_positions: tuple[int, ...] = (0,)
     exclude_token_positions_ge: int | None = None
-    exclude_token_strings: tuple[str, ...] = ("<bos>",)
+    exclude_token_strings: tuple[str, ...] = ("",)
     exclude_token_substrings: tuple[str, ...] = ("â", "€", "™")
     include_sources: tuple[str, ...] | None = None
     exclude_sources: tuple[str, ...] = ()
@@ -63,6 +63,7 @@ class FeatureFilterConfig:
 
 @dataclass(frozen=True)
 class AnalysisConfig:
+    # Atlas-level analysis.
     coactivation_max_pairs: int = 100_000
     decoder_neighbors_top_k: int = 20
     decoder_neighbors_batch_size: int = 512
@@ -78,6 +79,11 @@ class AnalysisConfig:
     umap_metric: str = "cosine"
     umap_random_state: int = 42
     lda_min_class_size: int = 20
+
+    # Research-grade geometry extensions.
+    coverage_top_components: tuple[int, ...] = (1, 5, 20)
+    graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
+    steering_candidate_top_n: int = 100
 
 
 @dataclass(frozen=True)
@@ -176,6 +182,22 @@ class ExperimentConfig:
     @property
     def decoder_feature_lda_path(self) -> Path:
         return self.run_data_dir / "decoder_feature_lda.parquet"
+
+    @property
+    def feature_coverage_profiles_path(self) -> Path:
+        return self.run_data_dir / "feature_coverage_profiles.parquet"
+
+    @property
+    def graph_alignment_path(self) -> Path:
+        return self.run_data_dir / "feature_graph_alignment.parquet"
+
+    @property
+    def graph_alignment_summary_path(self) -> Path:
+        return self.run_data_dir / "graph_alignment_summary.parquet"
+
+    @property
+    def feature_steering_scores_path(self) -> Path:
+        return self.run_data_dir / "feature_steering_scores.parquet"
 
     @property
     def inspection_feature_summaries_path(self) -> Path:
