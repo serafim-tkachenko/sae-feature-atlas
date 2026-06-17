@@ -39,7 +39,8 @@ MANUAL_TEXTS: list[tuple[str, str]] = [
     ("manual_assistant", "The user asked the assistant to explain the concept step by step."),
     ("manual_math", "Linear algebra studies vectors, matrices, eigenvalues, and projections."),
     ("manual_security", "The phishing email asked the recipient to reset their password."),
-    ("manual_literature", "The old house stood at the edge of the forest.")]
+    ("manual_literature", "The old house stood at the edge of the forest."),
+]
 
 
 CORPUS_REGISTRY: dict[str, CorpusDescriptor] = {
@@ -135,14 +136,16 @@ MATH_TEXTS = [
     "Gradient descent updates parameters in the opposite direction of the loss gradient.",
     "A covariance matrix describes how pairs of variables vary together.",
     "Principal component analysis rotates data into directions of maximum variance.",
-    "Conditional probability measures the probability of an event after observing evidence."]
+    "Conditional probability measures the probability of an event after observing evidence.",
+]
 
 CODE_TEXTS = [
     "A Python decorator wraps a function and can modify its behavior before returning it.",
     "Hash maps provide average constant-time lookup for keys when collisions are controlled.",
     "A unit test should isolate one behavior and assert the expected output clearly.",
     "Vectorized NumPy operations avoid slow Python loops over individual elements.",
-    "A command-line interface should validate arguments before launching expensive jobs."]
+    "A command-line interface should validate arguments before launching expensive jobs.",
+]
 
 
 def list_supported_corpora() -> list[str]:
@@ -313,7 +316,8 @@ def _load_mixed_broad(max_items: int) -> list[dict]:
         (_load_wikimedia_en, max_items * 20 // 100),
         (_load_tinystories, max_items * 15 // 100),
         (lambda n: _manual_rows("manual_math", MATH_TEXTS)[:n], max(1, max_items * 5 // 100)),
-        (lambda n: _manual_rows("manual_code", CODE_TEXTS)[:n], max(1, max_items * 5 // 100))]
+        (lambda n: _manual_rows("manual_code", CODE_TEXTS)[:n], max(1, max_items * 5 // 100)),
+    ]
     used = 0
     for loader, n in slices:
         n = min(n, max_items - used)
@@ -333,7 +337,8 @@ def _load_mixed_large(max_items: int) -> list[dict]:
         (_load_wikimedia_en, max_items * 25 // 100),
         (_load_pile_10k, max_items * 20 // 100),
         (_load_tinystories, max_items * 10 // 100),
-        (_load_openwebtext, max_items * 10 // 100)]
+        (_load_openwebtext, max_items * 10 // 100),
+    ]
     for loader, n in slices:
         _safe_extend(texts, loader, n, fallback=_load_pile_10k)
     if len(texts) < max_items:

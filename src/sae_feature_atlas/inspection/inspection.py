@@ -99,8 +99,7 @@ def _first_top_examples(top_examples: pd.DataFrame, feature_id: int, n: int = 5)
         "token_pos",
         "left_context",
         "center_token",
-        "right_context",
-    ]
+        "right_context"]
     cols = [col for col in cols if col in rows.columns]
 
     return rows.sort_values("activation", ascending=False).head(n)[cols].to_dict("records")

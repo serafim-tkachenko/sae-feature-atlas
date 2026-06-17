@@ -6,6 +6,7 @@ import pandas as pd
 
 from sae_feature_atlas.activations.collect import collect_sparse_sae_activations
 from sae_feature_atlas.analysis.bimodality import compute_bimodality_candidates
+from sae_feature_atlas.inspection.activation_regimes import build_bimodal_peak_examples
 from sae_feature_atlas.analysis.coactivation import compute_same_token_coactivation
 from sae_feature_atlas.config.schema import ExperimentConfig
 from sae_feature_atlas.analysis.coverage import compute_feature_coverage_profiles
@@ -31,7 +32,7 @@ from sae_feature_atlas.analysis.space import (
     compute_decoder_umap,
     compute_residual_pca,
 )
-from sae_feature_atlas.analysis.steering_candidates import score_steering_candidates
+
 
 CORE_STEPS = ["collect"]
 
@@ -45,8 +46,7 @@ ATLAS_STEPS = [
     "inspection",
     "space",
     "cards",
-    "report",
-]
+    "report"]
 
 RESEARCH_STEPS = [
     "collect",
@@ -59,16 +59,13 @@ RESEARCH_STEPS = [
     "space",
     "coverage",
     "alignment",
-    "candidates",
     "cards",
-    "report",
-]
+    "report"]
 
 STEP_PRESETS: dict[str, list[str]] = {
     "core": CORE_STEPS,
     "atlas": ATLAS_STEPS,
     "research": RESEARCH_STEPS,
-    "paper": RESEARCH_STEPS,
 }
 
 ALL_STEPS = [
@@ -82,10 +79,8 @@ ALL_STEPS = [
     "space",
     "coverage",
     "alignment",
-    "candidates",
     "cards",
-    "report",
-]
+    "report"]
 
 
 def normalize_steps(steps: str | list[str] = "all", preset: str | None = None) -> list[str]:
@@ -95,7 +90,6 @@ def normalize_steps(steps: str | list[str] = "all", preset: str | None = None) -
     - core: data collection and Gemma Scope activation extraction;
     - atlas: reusable feature-card atlas generation;
     - research: atlas plus geometry-aware research metrics;
-    - paper: currently the same as research, intended for larger runs.
     """
     if preset is not None:
         if preset not in STEP_PRESETS:
@@ -194,10 +188,23 @@ def run_geometry_vs_coactivation(cfg: ExperimentConfig) -> dict:
 
 def run_bimodality(cfg: ExperimentConfig) -> dict:
     acts = apply_activation_row_filters(pd.read_parquet(cfg.sae_activations_path), cfg.activation_filter)
+    token_meta = pd.read_parquet(cfg.token_metadata_path)
     candidates = compute_bimodality_candidates(acts, min_points=cfg.analysis.bimodality_min_points)
     candidates.to_parquet(cfg.bimodal_candidates_path, index=False)
-    return {"bimodal_candidates_rows": int(len(candidates))}
 
+    peak_examples = build_bimodal_peak_examples(
+        acts,
+        token_meta,
+        candidates,
+        top_features=cfg.analysis.bimodality_top_features_for_examples,
+        examples_per_peak=cfg.analysis.bimodality_examples_per_peak,
+        context_window=cfg.analysis.context_window,
+    )
+    peak_examples.to_parquet(cfg.bimodal_peak_examples_path, index=False)
+    return {
+        "bimodal_candidates_rows": int(len(candidates)),
+        "bimodal_peak_example_rows": int(len(peak_examples)),
+    }
 
 def run_space(cfg: ExperimentConfig) -> dict:
     """Compute residual-space and SAE decoder-space projections."""
@@ -290,8 +297,6 @@ def run_candidates(cfg: ExperimentConfig) -> dict:
     """Rank atlas-derived candidates for later steering validation."""
     # Refresh cards first so candidate scoring sees coverage/alignment metrics.
     cards = enrich_feature_cards(cfg)
-    candidates = score_steering_candidates(cards, top_n=cfg.analysis.steering_candidate_top_n)
-    candidates.to_parquet(cfg.feature_steering_scores_path, index=False)
     return {"feature_steering_score_rows": int(len(candidates))}
 
 
@@ -396,7 +401,7 @@ def run_pipeline(
             metrics[step] = run_coverage(cfg)
         elif step == "alignment":
             metrics[step] = run_alignment(cfg)
-        elif step == "candidates":
+        elif step == :
             metrics[step] = run_candidates(cfg)
         elif step == "inspection":
             metrics[step] = run_inspection(cfg)

@@ -96,7 +96,8 @@ def primary_label(label_string: str) -> str:
         "high_intensity",
         "high_frequency",
         "inspection_candidate",
-        "rare_feature"]
+        "rare_feature",
+    ]
 
     for label in priority:
         if label in labels:
@@ -236,7 +237,8 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
                 "rare_high_intensity",
                 "bimodal_candidate",
                 "coactivation_hub",
-                "decoder_geometry_dense"]
+                "decoder_geometry_dense",
+            ]
         )
         & ~likely_artifact
     )
@@ -249,7 +251,8 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
                 "inspection_candidate",
                 "high_frequency",
                 "high_intensity",
-                "rare_feature"]
+                "rare_feature",
+            ]
         )
         & ~likely_artifact
     )

@@ -47,9 +47,9 @@ Caveat:
 
 UMAP is an exploratory visualization - it can suggest local neighborhoods but does not prove semantic clustering
 
-## LDA
+## optional projection
 
-LDA means **Linear Discriminant Analysis**
+optional projection means **Linear Discriminant Analysis**
 
 It answers:
 
@@ -57,7 +57,7 @@ It answers:
 
 Outputs:
 
-- `decoder_feature_lda.parquet`
-- `decoder_lda_by_primary_label.png`
+- ``
+- `decoder_optional_supervised_projection_by_primary_label.png`
 
-LDA is supervised and should only be used after labels exist - current labels are heuristic triage labels, not ground truth
+optional projection is supervised and should only be used after labels exist - current labels are heuristic triage labels, not ground truth

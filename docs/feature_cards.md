@@ -1,84 +1,172 @@
 # Feature cards
 
-The central artifact is:
+A feature card is a multi-evidence profile of one SAE feature.
+
+The goal is to help a researcher inspect a feature quickly without pretending
+that automated metrics are final semantic explanations.
+
+## Main artifact
 
 ```text
-data/processed/<run_name>/feature_cards.parquet
+feature_cards.parquet
 ```
 
-Each row describes one SAE feature
+The cards table merges feature-level evidence from several stages.
 
-A feature card should answer:
+## Typical sections
 
-1. How often does the feature appear?
-2. How strong are its activations?
-3. What are its top examples?
-4. Is it likely an artifact?
-5. What features co-activate with it?
-6. What decoder directions are close?
-7. Is its activation distribution potentially bimodal?
-8. Should a human inspect it?
+### Activation evidence
 
-## Column groups
+Examples:
 
-### Identity
+```text
+token_count
+text_count
+activation_mean
+activation_p95
+activation_max
+top_examples_json
+```
 
-- `feature_id`
-- `model_name`
-- `layer`
-- `hook_name`
-- `sae_release`
-- `sae_id`
-- `run_name`
-- `corpus`
-- `activation_mode`
-- `top_k`
+Use this to understand how often and how strongly the feature appears.
 
-### Activation statistics
+### Bimodality evidence
 
-- `n_token_activations`
-- `n_texts`
-- `token_frequency`
-- `text_frequency`
-- `mean_activation`
-- `p50_activation`
-- `p95_activation`
-- `p99_activation`
-- `max_activation`
+Examples:
 
-### Examples
+```text
+bimodality_score
+bimodal_low_examples_json
+bimodal_high_examples_json
+```
 
-- `top_examples_json`
+Use this to compare low-activation and high-activation regimes.
 
-### Automated inspection
+The key question is:
 
-- `artifact_score`
-- `manual_priority`
-- `inspection_labels`
-- `top_tokens_json`
-- `top_positions_json`
-- `quote_share`
-- `punctuation_share`
-- `boundary_share`
-- `source_concentration`
+```text
+Do low and high activation examples appear to represent different strength
+levels or different contexts?
+```
 
-### Co-activation
+### Artifact-risk evidence
 
-- `top_coactivation_neighbors_json`
-- `max_coactivation_jaccard`
-- `max_coactivation_pmi`
+Examples:
 
-### Decoder geometry
+```text
+quote_risk
+punctuation_risk
+space_risk
+boundary_risk
+source_risk
+```
 
-- `top_decoder_neighbors_json`
-- `max_decoder_cosine`
-- `decoder_pc1`
-- `decoder_pc2`
+These are triage signals for features that may represent formatting, tokenization
+artifacts, or corpus artifacts.
 
-### Bimodality
+### Coactivation evidence
 
-- `bimodality_score`
-- `log_mean_low`
-- `log_mean_high`
-- `activation_p50`
-- `activation_p95`
+Examples:
+
+```text
+top_coactivation_neighbors_json
+coactivation_count
+jaccard
+pmi
+```
+
+Use this to see empirical neighbors.
+
+### Decoder geometry evidence
+
+Examples:
+
+```text
+top_decoder_neighbors_json
+decoder_cosine
+decoder_pca_x
+decoder_pca_y
+decoder_umap_x
+decoder_umap_y
+```
+
+Use this to inspect geometric neighbors in SAE decoder space.
+
+### Residual PCA coverage evidence
+
+Examples:
+
+```text
+pc_norm_mass_top_20
+effective_pc_dim
+pc_entropy
+pc_center_of_mass
+coverage_bucket
+```
+
+Use this to understand whether a feature's decoder direction aligns with
+high-variance residual directions or is spread across many residual PCs.
+
+### Graph-alignment evidence
+
+Examples:
+
+```text
+gca_at_5
+gca_at_10
+gca_at_20
+graph_alignment_bucket
+```
+
+Use this to see whether decoder geometry neighbors and empirical coactivation
+neighbors agree.
+
+### Intervention-candidate evidence
+
+Examples:
+
+```text
+atlas_intervention_score
+intervention_risk_score
+intervention_candidate_reason
+```
+
+These are candidate-selection signals only. They are not causal intervention results.
+
+## How to read a feature card safely
+
+Do:
+
+- compare top examples;
+- compare low/high activation examples for bimodal candidates;
+- check whether the feature is corpus-specific;
+- check whether geometry and coactivation agree;
+- check artifact-risk signals;
+- inspect limitations.
+
+Do not:
+
+- treat automated labels as final explanations;
+- claim causal influence without intervention experiments;
+- generalize from one corpus to all text;
+- ignore activation mode and thresholds.
+
+## Recommended manual workflow
+
+1. Sort by a research-relevant score.
+2. Pick a candidate feature.
+3. Inspect top activation examples.
+4. If bimodal, compare low/high examples.
+5. Inspect coactivation neighbors.
+6. Inspect decoder neighbors.
+7. Check residual PCA coverage.
+8. Write a short human note with confidence level.
+
+## Suggested confidence labels
+
+```text
+low         interesting but unclear
+medium      repeated pattern visible, but needs more evidence
+high        clear repeated pattern across examples and metrics
+artifact    likely tokenization/format/source artifact
+```

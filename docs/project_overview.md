@@ -1,88 +1,79 @@
 # Project overview
 
-SAE Feature Atlas turns a model/layer/corpus choice into reusable interpretability artifacts.
+SAE Feature Atlas is a local research toolkit for collecting, storing,
+inspecting, and visualizing sparse autoencoder activations from transformer
+models.
+
+The current reference backend is Gemma Scope. The code should stay structured so
+that additional SAE families can be added later, but the immediate goal is one
+high-quality end-to-end path rather than a broad provider framework.
+
+## Goals
+
+The project has two connected goals:
+
+1. **Reusable toolkit**
+   - choose a model, layer, SAE, and corpus;
+   - collect residual-stream activations;
+   - encode SAE activations;
+   - save reusable artifacts;
+   - load artifacts from notebooks;
+   - generate readable feature cards and reports.
+
+2. **Research workflow**
+   - follow the analysis workflow around feature filtering, coactivation,
+     bimodality, decoder geometry, and residual PCA coverage;
+   - generate evidence tables and visualizations;
+   - keep claims explicit and limited by the available evidence.
+
+## Pipeline overview
 
 ```text
-texts
--> model residual activations
--> SAE activations
--> sparse activation table
--> feature statistics
--> feature cards
--> co-activation analysis
--> decoder geometry analysis
--> activation-distribution analysis
--> automated inspection report
--> human follow-up
+config
+→ runtime loading
+→ activation collection
+→ feature filtering/statistics
+→ coactivation analysis
+→ decoder geometry
+→ bimodality and activation regimes
+→ residual PCA / decoder coverage
+→ graph alignment and features for manual follow-up
+→ feature cards
+→ report
 ```
 
-## What each analysis answers
+## Design principles
 
-### Feature statistics
+### Keep model-specific code at the boundary
 
-Question: **Which SAE features activate on this corpus, how often, and how strongly?**
+Gemma Scope-specific logic should stay in loading/config/runtime code. Generic
+analysis should consume artifacts such as:
 
-Outputs:
+- activation tables;
+- token metadata;
+- residual vector samples;
+- decoder weights;
+- feature IDs;
+- run metadata.
 
-- `feature_stats.parquet`
-- `filtered_features.parquet`
-- `feature_cards.parquet`
+Analysis modules should not depend on a Gemma-specific runtime object.
 
-### Top examples
+### Prefer explicit research artifacts
 
-Question: **What contexts most strongly activate a feature?**
+Every important analysis step should write a table or figure that can be loaded
+later. This makes the project useful as a research tool rather than only a CLI
+script.
 
-Output:
+### Do not overclaim
 
-- `top_feature_examples.parquet`
-- feature-card `top_examples_json`
+Automated labels, intervention scores, graph-alignment buckets, and bimodality
+scores are triage signals. They help decide where to inspect. They are not final
+semantic interpretations or causal evidence by themselves.
 
-### Co-activation
+## Current non-goals
 
-Question: **Which features tend to appear on the same tokens?**
-
-Output:
-
-- `coactivation_pairs.parquet`
-
-### Decoder geometry
-
-Question: **Which SAE decoder directions are close?**
-
-Output:
-
-- `decoder_neighbors.parquet`
-
-### Geometry vs co-activation
-
-Question: **Are geometrically close features also empirically co-active?**
-
-Output:
-
-- `geometry_vs_coactivation.parquet`
-
-Important disagreement cases:
-
-- high cosine / low co-activation: similar directions, different contexts;
-- low cosine / high co-activation: co-active but geometrically distinct, possibly compositional;
-- high cosine / high co-activation: potentially redundant or tightly related features;
-
-### Bimodality
-
-Question: **Does a feature have weak and strong activation regimes?**
-
-Output:
-
-- `bimodal_feature_candidates.parquet`
-
-### Automated inspection
-
-Question: **Which candidates are likely artifacts, and which deserve manual inspection?**
-
-Outputs:
-
-- `inspection_feature_summaries.parquet`
-- `inspection_pair_summaries.parquet`
-- `inspection_report.md`
-
-Automated inspection is heuristic - it does not replace human interpretation
+- Stable top-level Python API.
+- Support for every SAE family.
+- Web dashboard.
+- Claims about causal intervention without a controlled intervention protocol.
+- Production-level dataset hosting.

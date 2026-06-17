@@ -23,8 +23,7 @@ def _top_examples_json(df: pd.DataFrame, n: int = 5) -> str:
         "token_pos",
         "left_context",
         "center_token",
-        "right_context",
-    ]
+        "right_context"]
     existing_cols = [col for col in cols if col in df.columns]
     records = df.sort_values("activation", ascending=False).head(n)[existing_cols].to_dict("records")
     return _json(records)
@@ -169,29 +168,56 @@ def _merge_inspection(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             "inspection_labels",
             "top_tokens_json",
             "top_positions_json",
-            "top_sources_json",
-        ],
+            "top_sources_json"],
     )
 
 
 def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
-    if not cfg.bimodal_candidates_path.exists():
-        return cards
-    bimodal = pd.read_parquet(cfg.bimodal_candidates_path)
-    keep = [
-        "feature_id",
-        "bimodality_score",
-        "log_mean_low",
-        "log_mean_high",
-        "activation_min",
-        "activation_p50",
-        "activation_p95",
-        "activation_max",
-        "n_points",
-    ]
-    keep = [col for col in keep if col in bimodal.columns]
-    return _merge_replace(cards, bimodal[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
+    if cfg.bimodal_candidates_path.exists():
+        bimodal = pd.read_parquet(cfg.bimodal_candidates_path)
+        keep = [
+            "feature_id",
+            "bimodality_score",
+            "log_mean_low",
+            "log_mean_high",
+            "activation_min",
+            "activation_p50",
+            "activation_p95",
+            "activation_max",
+            "n_points"]
+        keep = [col for col in keep if col in bimodal.columns]
+        cards = _merge_replace(cards, bimodal[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
 
+    if cfg.bimodal_peak_examples_path.exists():
+        examples = pd.read_parquet(cfg.bimodal_peak_examples_path)
+        if not examples.empty and {"feature_id", "peak_label"}.issubset(examples.columns):
+            rows: list[dict] = []
+            cols = [
+                "activation",
+                "source",
+                "text_id",
+                "token_pos",
+                "left_context",
+                "center_token",
+                "right_context"]
+            cols = [col for col in cols if col in examples.columns]
+            for feature_id, group in examples.groupby("feature_id"):
+                low = group[group["peak_label"].astype(str).eq("low")].sort_values("activation", ascending=False).head(5)
+                high = group[group["peak_label"].astype(str).eq("high")].sort_values("activation", ascending=False).head(5)
+                rows.append(
+                    {
+                        "feature_id": int(feature_id),
+                        "bimodal_low_examples_json": _json(low[cols].to_dict("records")),
+                        "bimodal_high_examples_json": _json(high[cols].to_dict("records")),
+                    }
+                )
+            cards = _merge_replace(
+                cards,
+                pd.DataFrame(rows),
+                on="feature_id",
+                columns_to_replace=["bimodal_low_examples_json", "bimodal_high_examples_json"],
+            )
+    return cards
 
 def _merge_decoder_neighbors(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
     if not cfg.decoder_neighbors_path.exists():
@@ -295,8 +321,7 @@ def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
         "pc_norm_mass_top_1",
         "pc_norm_mass_top_5",
         "pc_norm_mass_top_20",
-        "coverage_bucket",
-    ]
+        "coverage_bucket"]
     return _merge_replace(cards, coverage, on="feature_id", columns_to_replace=columns)
 
 
@@ -310,26 +335,16 @@ def _merge_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame
         "gca_at_5",
         "gca_at_10",
         "gca_at_20",
-        "graph_alignment_bucket",
-    ]
+        "graph_alignment_bucket"]
     return _merge_replace(cards, alignment, on="feature_id", columns_to_replace=columns)
 
 
 def _merge_candidates(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
-    if not cfg.feature_steering_scores_path.exists():
         return cards
-
-    candidates = pd.read_parquet(cfg.feature_steering_scores_path)
 
     columns = [
         "graph_agreement_score",
-        "coverage_coherence_score",
-        "atlas_steering_score",
-        "steering_risk_score",
-        "steering_candidate_rank",
-        "is_steering_candidate",
-        "steering_candidate_reason",
-    ]
+        "coverage_coherence_score"]
 
     return _merge_replace(cards, candidates, on="feature_id", columns_to_replace=columns)
 
@@ -358,13 +373,8 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "inspection_labels",
         "artifact_score",
         "semantic_score",
-        "atlas_steering_score",
-        "steering_risk_score",
         "graph_agreement_score",
         "coverage_coherence_score",
-        "steering_candidate_rank",
-        "is_steering_candidate"
-        "steering_candidate_reason",
         "n_token_activations",
         "n_texts",
         "token_frequency",
@@ -392,10 +402,11 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "decoder_umap_y",
         "decoder_lda1",
         "decoder_lda2",
+        "bimodal_low_examples_json",
+        "bimodal_high_examples_json",
         "top_examples_json",
         "top_decoder_neighbors_json",
-        "top_coactivation_neighbors_json",
-    ]
+        "top_coactivation_neighbors_json"]
 
     existing_preferred = [col for col in preferred_order if col in cards.columns]
     remaining = [col for col in cards.columns if col not in existing_preferred]

@@ -37,8 +37,7 @@ def build_run_manifest(cfg: ExperimentConfig, metrics: dict, stage: str) -> dict
         "notes": [
             "SAE activations can be stored as top-k rows or all positive activations.",
             "Activation-row filtering is applied before feature statistics.",
-            "Feature cards are the central reusable artifact.",
-        ],
+            "Feature cards are the central reusable artifact."],
     }
 
 

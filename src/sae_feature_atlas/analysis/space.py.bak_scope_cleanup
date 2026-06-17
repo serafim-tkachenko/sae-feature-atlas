@@ -123,7 +123,8 @@ def compute_decoder_umap(
                 "artifact_score",
                 "bimodality_score",
                 "manual_priority",
-                "inspection_labels"]
+                "inspection_labels",
+            ]
             if c in feature_cards.columns
         ]
         df = df.merge(feature_cards[keep], on="feature_id", how="left")

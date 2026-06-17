@@ -264,18 +264,10 @@ def generate_plots(run_data_dir: Path, report_dir: Path) -> dict[str, str]:
                 out = plots_dir / "graph_alignment_bucket_bar.png"
                 _bar(df["graph_alignment_bucket"].value_counts(), "Graph alignment buckets", "features", out)
                 add("graph_alignment_bucket_bar", out)
-
-    p = run_data_dir / "feature_steering_scores.parquet"
     if p.exists():
         df = pd.read_parquet(p)
         if not df.empty:
-            if "atlas_steering_score" in df.columns:
-                out = plots_dir / "steering_candidate_score_hist.png"
-                _hist(df["atlas_steering_score"], "Atlas steering-candidate score", "score", out)
-                add("steering_candidate_score_hist", out)
-            if {"atlas_steering_score", "steering_risk_score"}.issubset(df.columns):
                 out = plots_dir / "steering_score_vs_risk.png"
-                _scatter(df, "atlas_steering_score", "steering_risk_score", "Candidate score vs risk", "atlas steering score", "risk", out)
                 add("steering_score_vs_risk", out)
 
     return generated
@@ -295,7 +287,6 @@ def generate_html_tables(run_data_dir: Path, report_dir: Path, n: int = 40) -> d
         "inspection_pairs": ("inspection_pair_summaries.parquet", ["pair_artifact_score"], "Automated inspection pair summaries"),
         "coverage_profiles": ("feature_coverage_profiles.parquet", ["pc_norm_mass_top_20", "effective_pc_dim"], "Residual coverage profiles"),
         "graph_alignment": ("feature_graph_alignment.parquet", ["gca_at_10"], "Feature graph-alignment metrics"),
-        "steering_candidates": ("feature_steering_scores.parquet", ["atlas_steering_score", "steering_risk_score"], "Steering-candidate hypotheses"),
     }
 
     for name, (filename, sort_cols, description) in specs.items():

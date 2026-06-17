@@ -86,6 +86,7 @@ class AnalysisConfig:
     # Research-grade geometry extensions.
     coverage_top_components: tuple[int, ...] = (1, 5, 20)
     graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
+    steering_candidate_top_n: int = 100
 
 
 @dataclass(frozen=True)
@@ -202,6 +203,8 @@ class ExperimentConfig:
         return self.run_data_dir / "graph_alignment_summary.parquet"
 
     @property
+    def feature_steering_scores_path(self) -> Path:
+        return self.run_data_dir / "feature_steering_scores.parquet"
 
     @property
     def inspection_feature_summaries_path(self) -> Path:
