@@ -293,13 +293,6 @@ def run_alignment(cfg: ExperimentConfig) -> dict:
     }
 
 
-def run_candidates(cfg: ExperimentConfig) -> dict:
-    """Rank atlas-derived candidates for later steering validation."""
-    # Refresh cards first so candidate scoring sees coverage/alignment metrics.
-    cards = enrich_feature_cards(cfg)
-    return {"feature_steering_score_rows": int(len(candidates))}
-
-
 def run_inspection(cfg: ExperimentConfig) -> dict:
     acts = pd.read_parquet(cfg.sae_activations_path)
     top_examples = pd.read_parquet(cfg.top_examples_path)
@@ -401,8 +394,6 @@ def run_pipeline(
             metrics[step] = run_coverage(cfg)
         elif step == "alignment":
             metrics[step] = run_alignment(cfg)
-        elif step == :
-            metrics[step] = run_candidates(cfg)
         elif step == "inspection":
             metrics[step] = run_inspection(cfg)
         elif step == "cards":

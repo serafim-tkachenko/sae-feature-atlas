@@ -198,9 +198,9 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "",
         _markdown_table(coverage, ["feature_id", "pc_mass_observed", "pc_mass_unobserved_tail", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_1", "pc_norm_mass_top_5", "pc_norm_mass_top_20", "coverage_bucket"], n=15),
         "",
-        "## 9. Graph alignment and steering candidates",
+        "## 9. Graph alignment",
         "",
-        "These are research-extension artifacts. Steering candidates are hypotheses for later causal validation, not evidence that steering works.",
+        "These are research-extension artifacts.",
         "",
         "Graph-alignment buckets:",
         "",
@@ -215,7 +215,6 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "- Bimodality is a statistical candidate signal; low/high examples require manual interpretation.",
         "- Decoder cosine does not prove semantic similarity or causal interaction.",
         "- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.",
-        "- Steering-candidate scores are not steering results.",
         "",
         "## 11. Metric glossary",
         "",
@@ -304,9 +303,6 @@ def write_html_report(cfg: ExperimentConfig) -> None:
   <h2>Residual PCA coverage</h2>
   {_html_table(coverage, ["feature_id", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_20", "coverage_bucket"], n=16)}
 
-  <h2>Steering-candidate hypotheses</h2>
-  <p>These are candidates for later causal validation, not steering results.</p>
-
   <h2>Generated plots</h2>
   <ul>{plot_links or '<li>No plots generated.</li>'}</ul>
 
@@ -318,7 +314,6 @@ def write_html_report(cfg: ExperimentConfig) -> None:
     <li>Feature cards are multi-evidence profiles, not final explanations.</li>
     <li>Bimodality is a candidate signal; low/high examples require manual review.</li>
     <li>Decoder geometry and coactivation are related but distinct signals.</li>
-    <li>Steering scores are hypotheses for future causal validation.</li>
   </ul>
 </body>
 </html>

@@ -80,8 +80,6 @@ class AtlasRun:
     def graph_alignment(self) -> pd.DataFrame:
         return self._parquet("feature_graph_alignment.parquet")
 
-    def steering_scores(self) -> pd.DataFrame:
-
     def feature_examples(self, feature_id: int, n: int = 20) -> pd.DataFrame:
         examples = self.top_examples()
         if examples.empty or "feature_id" not in examples.columns:

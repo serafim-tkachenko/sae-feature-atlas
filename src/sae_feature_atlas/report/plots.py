@@ -264,12 +264,7 @@ def generate_plots(run_data_dir: Path, report_dir: Path) -> dict[str, str]:
                 out = plots_dir / "graph_alignment_bucket_bar.png"
                 _bar(df["graph_alignment_bucket"].value_counts(), "Graph alignment buckets", "features", out)
                 add("graph_alignment_bucket_bar", out)
-    if p.exists():
-        df = pd.read_parquet(p)
-        if not df.empty:
-                out = plots_dir / "steering_score_vs_risk.png"
-                add("steering_score_vs_risk", out)
-
+                
     return generated
 
 
