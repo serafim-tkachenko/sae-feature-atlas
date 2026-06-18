@@ -1,63 +1,20 @@
 # Geometry methods
 
-This document explains the geometry methods used in SAE Feature Atlas and how they relate to recent papers
+The geometry part of the project uses unsupervised diagnostics only.
 
-## Three spaces
+## Decoder PCA
 
-The project distinguishes three spaces:
+PCA over normalized SAE decoder vectors. Useful for checking global anisotropy
+and broad structure in decoder space.
 
-1. **Residual activation space**: sampled residual-stream vectors from the model.
-2. **SAE feature activation space**: sparse activation coefficients over SAE features.
-3. **SAE decoder feature space**: the point cloud of normalized SAE decoder vectors.
+## Decoder UMAP
 
-Most feature-geometry plots in this project use the third space: normalized decoder vectors.
+UMAP over normalized SAE decoder vectors. Useful for visualization and manual
+triage. UMAP plots can be colored by artifact score, bimodality score, or manual
+priority, but the embedding itself is not evidence of semantic clusters.
 
-## PCA
+## Decoder-neighbor geometry
 
-PCA is the linear baseline.
-
-It answers:
-
--> Is the feature or residual point cloud anisotropic? How much variance is captured by a few directions?
-
-Outputs:
-
-- `residual_pca_summary.parquet`
-- `decoder_pca_summary.parquet`
-- `decoder_feature_pca.parquet`
-
-PCA is useful for large-scale shape/eigenvalue analysis, but it can be too coarse for local semantic neighborhoods
-
-## UMAP
-
-UMAP is a nonlinear visualization method used over normalized decoder vectors
-
-It answers:
-
--> Do local neighborhoods of SAE decoder features suggest visible modular structure?
-
-Outputs:
-
-- `decoder_feature_umap.parquet`
-- `decoder_umap_by_artifact_score.png`
-- `decoder_umap_by_bimodality.png`
-- `decoder_umap_by_manual_priority.png`
-
-Caveat:
-
-UMAP is an exploratory visualization - it can suggest local neighborhoods but does not prove semantic clustering
-
-## optional projection
-
-optional projection means **Linear Discriminant Analysis**
-
-It answers:
-
--> Do heuristic labels such as `likely_artifact`, `bimodal_candidate`, or `high_frequency` separate in decoder space?
-
-Outputs:
-
-- ``
-- `decoder_optional_supervised_projection_by_primary_label.png`
-
-optional projection is supervised and should only be used after labels exist - current labels are heuristic triage labels, not ground truth
+Nearest-neighbor search by decoder cosine similarity. This is compared with
+same-token coactivation to identify where geometric closeness agrees or disagrees
+with empirical usage overlap.

@@ -1,369 +1,127 @@
 # SAE Feature Atlas
 
-`sae_feature_atlas` is a local research toolkit for collecting, storing,
-inspecting, and visualizing SAE activations from transformer models.
+SAE Feature Atlas is a local research toolkit for exploring how Gemma Scope SAE
+features cover and organize transformer activations.
 
-The current reference path is **Gemma Scope**. The project is designed to make it
-easy to choose a model, layer, SAE, and corpus; collect residual-stream and SAE
-activations; and generate a readable research report with feature cards, plots,
-and tables.
+The project focuses on **descriptive analysis**, not causal-control experiments. It collects model activations, encodes them through a Gemma Scope
+SAE, and builds feature-level evidence from activation statistics, examples,
+coactivation, decoder geometry, bimodality, residual-space coverage, and
+inspection reports.
 
-The core workflow is:
+## What the pipeline answers
 
-```text
-choose model + layer + SAE
--> choose corpus and activation-storage mode
--> collect residual activations and SAE activations
--> filter features
--> analyze coactivation, decoder geometry, bimodality, and residual PCA coverage
--> generate feature cards, grouped plots, tables, and a research report
-```
+The current workflow is organized around a small analysis checklist:
 
-## What this project is
-
-SAE Feature Atlas has two connected goals:
-
-1. **Reusable toolkit** — collect and inspect SAE activation datasets in a
-   reproducible way.
-2. **Research workflow** — support the current analysis-workflow analysis around
-   coactivation, decoder geometry, bimodality, residual PCA coverage, and
-   cross-view feature analysis.
+1. Build a reproducible activation dataset.
+2. Filter usable features and collect top activation examples.
+3. Measure same-token feature coactivation.
+4. Compare decoder-neighbor geometry with empirical coactivation.
+5. Detect possible low/high activation regimes and save examples for manual review.
+6. Inspect features and feature pairs for obvious artifacts.
+7. Compare SAE decoder directions with sampled residual-stream PCA structure.
+8. Build feature cards and markdown/html reports.
 
 ## Installation
 
 ```bash
-git clone https://github.com/serafim-tkachenko/sae-feature-atlas.git
-cd sae-feature-atlas
 uv sync
-uv run hf auth login
 ```
 
-NB! Some datasets and models may require Hugging Face access, accepted model terms,
-or a configured HF token.
-
-## Quick checks
-
-List supported model aliases:
+The package exposes one CLI:
 
 ```bash
-uv run sae-atlas list-models
+uv run sae-atlas --help
 ```
 
-List pipeline presets:
+## Recommended first run
 
-```bash
-uv run sae-atlas list-presets
-```
-
-List supported corpora:
-
-```bash
-uv run sae-atlas list-corpora
-```
-
-Resolve the Gemma Scope SAE selected by model/layer/site:
-
-```bash
-uv run sae-atlas resolve-sae \
-  --model gemma-3-1b-pt \
-  --layer 13
-```
-
-Smoke-test model/SAE compatibility:
-
-```bash
-uv run sae-atlas smoke-test \
-  --model gemma-3-1b-pt \
-  --layer 13
-```
-
-Preview a full run before executing it:
+Preview the exact resolved configuration and artifact dependencies:
 
 ```bash
 uv run sae-atlas plan \
   --preset research \
   --model gemma-3-1b-pt \
   --layer 13 \
-  --corpus mixed-broad \
-  --max-texts 300 \
-  --max-seq-len 256 \
-  --activation-mode topk \
-  --top-k 32
-```
-
-`plan` is a dry-run command. It should show the selected model, layer, hook,
-SAE, corpus, steps, outputs, and how the run maps to the analysis-workflow checklist.
-
-## Recommended first run
-
-Start with a small run before moving to larger corpora:
-
-```bash
-uv run sae-atlas run \
-  --preset research \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --corpus mixed-broad \
-  --max-texts 50 \
-  --max-seq-len 128 \
-  --activation-mode topk \
-  --top-k 32
-```
-
-Then scale up:
-
-```bash
-uv run sae-atlas run \
-  --preset paper \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --corpus mixed-large \
-  --max-texts 2000 \
-  --max-seq-len 512 \
-  --activation-mode topk \
-  --top-k 64
-```
-
-
-## Preset model
-
-SAE Feature Atlas intentionally keeps only three presets:
-
-```text
-core      collect reusable activation artifacts
-atlas     build a descriptive feature atlas for inspection
-research  add cross-view analysis: residual PCA coverage and graph alignment
-```
-
-There is no separate `paper` preset. Larger or publication-oriented runs should
-use `--preset research` with larger corpora and stricter review settings.
-
-## Pipeline presets
-
-The recommended interface is:
-
-```bash
-uv run sae-atlas run --preset <preset>
-```
-
-### `core`
-
-Collects reusable low-level activation artifacts.
-
-```text
-collect
-```
-
-Use this when you only need token metadata, sampled residual vectors, and sparse
-SAE activations.
-
-```bash
-uv run sae-atlas run \
-  --preset core \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --corpus pile-10k \
+  --site resid_post \
   --max-texts 100 \
-  --max-seq-len 256 \
-  --activation-mode topk \
   --top-k 32
 ```
 
-### `atlas`
-
-Builds the reusable feature atlas.
-
-```text
-collect → features → coactivation → geometry → geometry-vs-coactivation
-→ bimodality → inspection → space → cards → report
-```
-
-Use this when you want feature statistics, coactivation pairs, decoder geometry,
-bimodality candidates, feature cards, plots, and a compiled report.
+Check that the selected model/SAE can load:
 
 ```bash
-uv run sae-atlas run \
-  --preset atlas \
+uv run sae-atlas smoke-test \
   --model gemma-3-1b-pt \
   --layer 13 \
-  --corpus mixed-research \
-  --max-texts 300 \
-  --max-seq-len 256 \
-  --activation-mode topk \
-  --top-k 32
+  --site resid_post
 ```
 
-### `research`
-
-Builds the atlas and adds geometry-aware research metrics.
-
-```text
-collect → features → coactivation → geometry → geometry-vs-coactivation
-→ bimodality → inspection → space → coverage → alignment → candidates
-→ cards → report
-```
-
-Use this when you want the full analysis-workflow analysis with residual coverage,
-graph alignment, and cross-view analysis scores.
+Run the analysis:
 
 ```bash
 uv run sae-atlas run \
   --preset research \
   --model gemma-3-1b-pt \
   --layer 13 \
-  --corpus mixed-broad \
-  --max-texts 300 \
-  --max-seq-len 256 \
-  --activation-mode topk \
+  --site resid_post \
+  --max-texts 100 \
   --top-k 32
 ```
 
-## Manual step selection
-
-Advanced users can select steps directly:
-
-```bash
-uv run sae-atlas run \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --corpus mixed-broad \
-  --max-texts 300 \
-  --steps collect,features,coactivation,geometry,bimodality,inspection,space,cards,report
-```
-
-Available steps:
+## Presets
 
 ```text
-collect                    collect model residuals and SAE activations
-features                   build feature statistics and top examples
-coactivation               compute same-token feature coactivation
-geometry                   compute nearest SAE decoder directions
-geometry-vs-coactivation   compare decoder geometry with empirical coactivation
-bimodality                 find activation-distribution bimodality candidates
-inspection                 run automated feature/pair artifact triage
-space                      compute residual PCA and decoder PCA/UMAP/optional projection
-coverage                   project decoder directions onto residual PCA components
-alignment                  compare decoder-neighbor graph with coactivation graph
-candidates                 rank feature candidates for later manual validation
-cards                      merge available metrics into feature_cards.parquet
-report                     generate Markdown/HTML reports and plots
+core      collect
+atlas     collect -> features -> coactivation -> geometry -> geometry-vs-coactivation -> bimodality -> inspection -> space -> cards -> report
+research  atlas + coverage + alignment
 ```
 
-## Analysis-workflow checklist
-
-The current research workflow is designed to cover the analysis workflow:
-
-| # | Analysis-workflow item | Main artifacts |
-|---:|---|---|
-| 0 | Collect SAE activations for one model/SAE/corpus | `token_metadata`, `sae_activations_*`, `residual_vectors_sample` |
-| 1 | Filter features by frequency / quality | `feature_stats`, `filtered_features` |
-| 2 | Find coactivating features by token/sample overlap | `coactivation_pairs` |
-| 3 | Find bimodal activation-strength features and inspect low/high regimes | `bimodal_feature_candidates`, `bimodal_peak_examples` |
-| 4 | Find close decoder directions and compare with coactivation | `decoder_neighbors`, `geometry_vs_coactivation` |
-| 5 | Check which decoder directions lie in high/low-variance residual PCs | `feature_coverage_profiles` |
-| 6 | Estimate how many residual PCs each decoder direction uses | `effective_pc_dim`, `pc_entropy`, `pc_center_of_mass` in `feature_coverage_profiles` |
-
-The most important qualitative artifact for point 3 is:
+## Steps
 
 ```text
-bimodal_peak_examples.parquet
+collect                   collect token metadata, sparse SAE activations, and residual samples
+features                  compute feature statistics, filters, top examples, and base feature cards
+coactivation              compute same-token feature coactivation pairs
+geometry                  compute nearest neighbors between SAE decoder directions
+geometry-vs-coactivation  compare decoder-neighbor geometry with empirical coactivation
+bimodality                score activation distributions and save low/high regime examples
+inspection                build automated feature and pair inspection summaries
+space                     compute residual PCA, decoder PCA, and decoder UMAP
+coverage                  compare decoder directions with residual PCA components
+alignment                 compare decoder-neighbor and coactivation-neighbor graphs
+cards                     merge available evidence into canonical feature cards
+report                    write markdown/html reports, plots, and table previews
 ```
 
-It is intended to compare examples from low-activation and high-activation modes
-for candidate bimodal features.
-
-## Corpus choices
-
-Use `list-corpora` for the current registry:
+## Inspection commands
 
 ```bash
-uv run sae-atlas list-corpora
+uv run sae-atlas inspect-feature --run-name <run> --feature-id 123 --n 10
+uv run sae-atlas inspect-pair --run-name <run> --feature-i 123 --feature-j 456 --n 10
+uv run sae-atlas inspect-bimodal-feature --run-name <run> --feature-id 123 --n 6
 ```
 
-Typical options:
+Use these after running at least `collect` and `features` - pair inspection also
+benefits from `coactivation` and `geometry-vs-coactivation`.
 
-```text
-pile-10k              diverse small Pile sample - good debug/default pilot corpus
-tinystories           simple narrative text - useful smoke test but narrow
-fineweb-edu-sample    educational web sample; better quality, heavier
-wikimedia-en          encyclopedic text
-openwebtext           web text, broader distribution
-math-small            small math/scientific reasoning corpus
-code-small            small code/technical corpus
-mixed-research        mixed pilot corpus
-mixed-broad           broader mixed corpus for less cherry-picked analysis
-mixed-large           larger mixed corpus for research-style runs
-jsonl:/path/file.jsonl custom corpus with {"source", "text"} rows
-```
+## Main artifacts
 
-For objective analysis, prefer mixed corpora over a single narrow source. For
-debugging, use smaller corpora and lower `max_texts`.
-
-## Activation modes
-
-### `topk`
-
-```bash
---activation-mode topk --top-k 64
-```
-
-Stores the strongest K SAE features per token.
-
-Advantages:
-
-- bounded storage;
-- faster first-pass analysis;
-- useful for feature cards and exploratory work.
-
-Caveat:
-
-- feature frequency means “frequency of appearing among saved top-K features”,
-  not true positive activation frequency.
-
-### `positive`
-
-```bash
---activation-mode positive
-```
-
-Stores all positive SAE features.
-
-Advantages:
-
-- more faithful activation-frequency estimates;
-- better for final frequency/coactivation claims.
-
-Caveat:
-
-- larger and slower;
-- may be much more expensive for broad corpora.
-
-## Main outputs
-
-A run writes to:
+Generated artifacts live under:
 
 ```text
 data/processed/<run_name>/
 reports/<run_name>/
 ```
 
-Core outputs:
+Important data artifacts:
 
 ```text
 token_metadata.parquet
 sae_activations_topk.parquet or sae_activations_positive.parquet
 residual_vectors_sample.npy
-residual_vectors_metadata.parquet
-token_activation_summary.parquet
-```
-
-Atlas outputs:
-
-```text
 feature_stats.parquet
 filtered_features.parquet
 top_feature_examples.parquet
-feature_cards.parquet
 coactivation_pairs.parquet
 decoder_neighbors.parquet
 geometry_vs_coactivation.parquet
@@ -371,157 +129,32 @@ bimodal_feature_candidates.parquet
 bimodal_peak_examples.parquet
 inspection_feature_summaries.parquet
 inspection_pair_summaries.parquet
+residual_pca_summary.parquet
+decoder_pca_summary.parquet
 decoder_feature_pca.parquet
 decoder_feature_umap.parquet
-
-```
-
-Research outputs:
-
-```text
 feature_coverage_profiles.parquet
 feature_graph_alignment.parquet
-graph_alignment_summary.parquet
-feature_intervention_scores.parquet
+feature_cards.parquet
 ```
 
-Report outputs:
+Important report artifacts:
 
 ```text
-reports/<run_name>/summary.md
-reports/<run_name>/index.html
-reports/<run_name>/inspection_report.md
-reports/<run_name>/plots/
-reports/<run_name>/tables/
+summary.md
+index.html
+inspection_report.md
+plots/
+tables/
+manifest.json
 ```
 
-## Notebook usage
+## Interpretation caveats
 
-The notebook-friendly access layer is the recommended way to inspect saved runs:
-
-```python
-from sae_feature_atlas.storage import AtlasRun
-
-run = AtlasRun.from_dir("data/processed/<run_name>")
-
-cards = run.feature_cards()
-feature_stats = run.feature_stats()
-coactivation = run.coactivation_pairs()
-bimodal_examples = run.bimodal_peak_examples()
-
-examples = run.feature_examples(feature_id=12345, n=20)
-```
-
-See `docs/notebook_usage.md`.
-
-## Residual activations vs PCA coordinates
-
-Residual activations are the original model activations at a selected residual
-stream hook. For a model with hidden size `d_model`, each token has a residual
-vector in `R^d_model`.
-
-Residual PCA coordinates are not new model activations. They are a diagnostic
-coordinate system fitted on a sample of residual vectors. PCA rotates the
-activation cloud into directions of decreasing variance.
-
-SAE decoder directions also live in residual-stream space. Decoder PCA coverage
-asks where those SAE directions lie relative to high-variance and low-variance
-directions of the residual activation cloud.
-
-In short:
-
-```text
-residual activation      = original model vector for a token
-residual PCA coordinate  = projection of that vector onto PCA components
-decoder PCA projection   = projection of an SAE decoder direction onto PCA components
-```
-
-## What is a feature card?
-
-A feature card is a multi-evidence profile of an SAE latent. Depending on the
-selected steps, it can include:
-
-```text
-activation evidence:
-  frequency, intensity, top examples, bimodality
-
-bimodality evidence:
-  low/high activation-regime examples
-
-artifact evidence:
-  quote/punctuation/space/boundary/source risk
-
-coactivation evidence:
-  empirical same-token feature neighbors
-
-decoder geometry evidence:
-  nearest decoder directions, PCA/UMAP/optional projection coordinates
-
-residual coverage evidence:
-  alignment with high/low variance residual PCA components
-
-graph-alignment evidence:
-  agreement between decoder-neighbor and coactivation neighborhoods
-
-cross-view analysis evidence:
-  atlas_intervention_score, intervention_risk_score, candidate reason
-```
-
-Automated labels and scores are triage signals, not final semantic explanations.
-
-## Current non-goals
-
-Current non-goals:
-
-- stable top-level Python API;
-- broad provider/plugin architecture;
-- support for every SAE family;
-- claiming causal intervention from qualitative examples alone;
-- web dashboard before the core analysis-workflow workflow is reliable.
-
-The immediate goal is to make one Gemma Scope path very clear, reproducible, and
-useful for research inspection. Additional SAE backends such as Llama Scope can
-be added later once the core artifact format and report workflow are stable.
-
-## Documentation map
-
-```text
-docs/project_overview.md     project goals and architecture
-docs/quickstart.md           first run and debugging workflow
-docs/cli.md                  CLI reference
-docs/configuration.md        configuration and presets
-docs/corpus_guide.md         corpus choices and tradeoffs
-docs/concepts.md             residual activations, SAE activations, PCA concepts
-docs/metrics_guide.md        metric definitions and limitations
-docs/geometry_methods.md     decoder geometry and residual PCA methods
-docs/feature_cards.md        feature-card schema and interpretation
-docs/analysis_plan.md          explicit analysis-workflow alignment
-docs/reporting.md            report and plot organization
-docs/notebook_usage.md       Python access layer for saved runs
-docs/library_vision.md       toolkit vision and non-goals
-```
-
-## Git hygiene
-
-Generated data and reports are ignored by default. Commit source code and stable
-documentation, not large generated artifacts.
-
-Recommended generated artifacts to keep out of git:
-
-```text
-data/processed/**
-reports/**/plots/
-reports/**/tables/
-reports/**/*.json
-reports/**/index.html
-```
-
-Commit curated `summary.md` or selected report snippets only when they are
-intentionally part of a presentation or paper draft.
-
-## License
-
-Copyright © 2026 Serafim Tkachenko. All rights reserved.
-
-No license is granted for reuse, redistribution, or derivative works without
-explicit written permission.
+- Feature cards are multi-evidence profiles, not final explanations.
+- Automated labels are heuristic triage labels, not ground-truth semantics.
+- In `topk` mode, feature frequency means frequency among stored top-k rows, not
+  true positive activation frequency.
+- Bimodality is a statistical signal - low/high examples require manual review.
+- Decoder cosine and coactivation are descriptive relationships, not causal proof.
+- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.
