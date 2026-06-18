@@ -1,17 +1,24 @@
-
 from __future__ import annotations
 
 import argparse
 import json
 from dataclasses import asdict
+from pathlib import Path
 
 from sae_feature_atlas.config.datasets import describe_corpus, list_supported_corpora
 from sae_feature_atlas.config.registry import list_supported_models, make_config
-from sae_feature_atlas.pipeline.runner import ALL_STEPS, STEP_PRESETS, normalize_steps, run_pipeline
+from sae_feature_atlas.config.schema import ExperimentConfig
+from sae_feature_atlas.inspection.commands import (
+    print_bimodal_feature_examples,
+    print_feature_examples,
+    print_pair_examples,
+)
+from sae_feature_atlas.pipeline.runner import run_pipeline
+from sae_feature_atlas.pipeline.steps import ALL_STEPS, STEP_PRESETS, normalize_steps
 from sae_feature_atlas.report.markdown import write_report
 from sae_feature_atlas.runtime.gemma_scope import GemmaScopeRuntime
 
-# Supported sites from where activations can be extracted
+# Short aliases are accepted by the CLI and normalized in config.registry
 SUPPORTED_SITES = ["resid_post", "res", "mlp_out", "mlp", "attn_out", "att"]
 
 
@@ -29,7 +36,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-name", default=None)
 
 
-def cfg_from_args(args: argparse.Namespace):
+def cfg_from_args(args: argparse.Namespace) -> ExperimentConfig:
     return make_config(
         model=args.model,
         layer=args.layer,
@@ -43,6 +50,115 @@ def cfg_from_args(args: argparse.Namespace):
         top_k=args.top_k,
         run_name=args.run_name,
     )
+
+
+def _exists(path: Path) -> str:
+    return "exists" if path.exists() else "missing"
+
+
+def _step_artifacts(cfg: ExperimentConfig) -> dict[str, dict[str, list[Path]]]:
+    return {
+        "collect": {
+            "inputs": [],
+            "outputs": [
+                cfg.token_metadata_path,
+                cfg.sae_activations_path,
+                cfg.token_activation_summary_path,
+                cfg.residual_vectors_path,
+                cfg.residual_metadata_path,
+            ],
+        },
+        "features": {
+            "inputs": [cfg.sae_activations_path, cfg.token_metadata_path],
+            "outputs": [cfg.feature_stats_path, cfg.filtered_features_path, cfg.top_examples_path, cfg.feature_cards_path],
+        },
+        "coactivation": {
+            "inputs": [cfg.sae_activations_path, cfg.filtered_features_path],
+            "outputs": [cfg.coactivation_pairs_path],
+        },
+        "geometry": {
+            "inputs": [cfg.filtered_features_path],
+            "outputs": [cfg.decoder_neighbors_path],
+        },
+        "geometry-vs-coactivation": {
+            "inputs": [cfg.decoder_neighbors_path, cfg.coactivation_pairs_path],
+            "outputs": [cfg.geometry_vs_coactivation_path],
+        },
+        "bimodality": {
+            "inputs": [cfg.sae_activations_path, cfg.token_metadata_path],
+            "outputs": [cfg.bimodal_candidates_path, cfg.bimodal_peak_examples_path],
+        },
+        "inspection": {
+            "inputs": [cfg.sae_activations_path, cfg.top_examples_path, cfg.filtered_features_path],
+            "outputs": [cfg.inspection_feature_summaries_path, cfg.inspection_pair_summaries_path, cfg.inspection_report_md_path],
+        },
+        "space": {
+            "inputs": [cfg.residual_vectors_path, cfg.feature_stats_path],
+            "outputs": [cfg.residual_pca_summary_path, cfg.decoder_pca_summary_path, cfg.decoder_feature_pca_path, cfg.decoder_feature_umap_path],
+        },
+        "coverage": {
+            "inputs": [cfg.residual_vectors_path, cfg.filtered_features_path],
+            "outputs": [cfg.feature_coverage_profiles_path],
+        },
+        "alignment": {
+            "inputs": [cfg.decoder_neighbors_path, cfg.coactivation_pairs_path, cfg.filtered_features_path],
+            "outputs": [cfg.graph_alignment_path, cfg.graph_alignment_summary_path],
+        },
+        "cards": {
+            "inputs": [cfg.filtered_features_path],
+            "outputs": [cfg.feature_cards_path],
+        },
+        "report": {
+            "inputs": [cfg.feature_cards_path],
+            "outputs": [cfg.summary_md_path, cfg.html_report_path],
+        },
+    }
+
+
+def _plan_artifact_status(cfg: ExperimentConfig, steps: list[str]) -> list[dict[str, str]]:
+    artifacts = _step_artifacts(cfg)
+    rows: list[dict[str, str]] = []
+    produced_by_plan: set[Path] = set()
+    for step in steps:
+        spec = artifacts.get(step, {"inputs": [], "outputs": []})
+        for path in spec["inputs"]:
+            available = path.exists() or path in produced_by_plan
+            rows.append(
+                {
+                    "step": step,
+                    "kind": "input",
+                    "status": "ready" if available else "missing",
+                    "path": str(path),
+                }
+            )
+        for path in spec["outputs"]:
+            rows.append(
+                {
+                    "step": step,
+                    "kind": "output",
+                    "status": _exists(path),
+                    "path": str(path),
+                }
+            )
+            produced_by_plan.add(path)
+    return rows
+
+
+def _analysis_checklist(steps: list[str]) -> dict[str, bool]:
+    return {
+        "activation dataset": "collect" in steps,
+        "feature filtering and top examples": "features" in steps,
+        "same-token coactivation": "coactivation" in steps,
+        "decoder geometry": "geometry" in steps,
+        "geometry vs coactivation": "geometry-vs-coactivation" in steps,
+        "bimodal activation-regime examples": "bimodality" in steps,
+        "automated inspection summaries": "inspection" in steps,
+        "residual/decoder PCA and decoder UMAP": "space" in steps,
+        "decoder directions vs residual PCA coverage": "coverage" in steps,
+        "decoder-neighbor vs coactivation-neighbor alignment": "alignment" in steps,
+        "feature cards": "cards" in steps,
+        "markdown/html report": "report" in steps,
+    }
 
 
 def cmd_list_models(_: argparse.Namespace) -> None:
@@ -80,17 +196,21 @@ def cmd_list_presets(_: argparse.Namespace) -> None:
 def cmd_resolve_sae(args: argparse.Namespace) -> None:
     print(json.dumps(cfg_from_args(args).model.__dict__, indent=2))
 
-# Dry-run to see what
+
 def cmd_plan(args: argparse.Namespace) -> None:
     cfg = cfg_from_args(args)
     steps = normalize_steps(args.steps, preset=args.preset)
     corpus = describe_corpus(cfg.collection.corpus)
+    artifact_status = _plan_artifact_status(cfg, steps)
+    checklist = _analysis_checklist(steps)
     plan = {
         "model": cfg.model.__dict__,
         "corpus": asdict(corpus),
         "collection": cfg.collection.__dict__,
         "preset": args.preset or "custom/default",
         "steps": steps,
+        "analysis_checklist": checklist,
+        "artifacts": artifact_status,
         "outputs": {
             "data_dir": str(cfg.run_data_dir),
             "reports_dir": str(cfg.run_reports_dir),
@@ -103,8 +223,8 @@ def cmd_plan(args: argparse.Namespace) -> None:
         print(json.dumps(plan, indent=2, default=str, ensure_ascii=False))
         return
 
-    print("SAE Feature Atlas run plan")
-    print("=" * 32)
+    print("SAE Feature Atlas preflight plan")
+    print("=" * 36)
     print(f"Model:      {cfg.model.model_name}")
     print(f"Layer/hook: {cfg.model.layer} / {cfg.model.hook_name}")
     print(f"SAE:        {cfg.model.sae_release} / {cfg.model.sae_id}")
@@ -118,18 +238,15 @@ def cmd_plan(args: argparse.Namespace) -> None:
     print(f"  data:     {cfg.run_data_dir}")
     print(f"  report:   {cfg.summary_md_path}")
     print(f"  html:     {cfg.html_report_path}")
-    print("\nMentor-plan coverage if the selected steps finish:")
-    coverage = {
-        "0 activation dataset": "collect" in steps,
-        "1 feature filtering": "features" in steps,
-        "2 coactivation": "coactivation" in steps,
-        "3 bimodality regimes": "bimodality" in steps,
-        "4 decoder geometry vs coactivation": "geometry-vs-coactivation" in steps,
-        "5 residual PCA coverage": "coverage" in steps or "space" in steps,
-        "6 decoder direction PC spread": "coverage" in steps,
-    }
-    for item, enabled in coverage.items():
+
+    print("\nAnalysis checklist if selected steps finish:")
+    for item, enabled in checklist.items():
         print(f"  [{'x' if enabled else ' '}] {item}")
+
+    print("\nArtifact preflight:")
+    for row in artifact_status:
+        marker = "✓" if row["status"] in {"ready", "exists"} else "!"
+        print(f"  {marker} {row['step']:24} {row['kind']:6} {row['status']:8} {row['path']}")
 
 
 def cmd_smoke_test(args: argparse.Namespace) -> None:
@@ -150,6 +267,23 @@ def cmd_report(args: argparse.Namespace) -> None:
     write_report(cfg)
     print("Wrote", cfg.summary_md_path)
     print("Wrote", cfg.html_report_path)
+
+
+def cmd_inspect_feature(args: argparse.Namespace) -> None:
+    print_feature_examples(cfg_from_args(args), feature_id=args.feature_id, n=args.n)
+
+
+def cmd_inspect_pair(args: argparse.Namespace) -> None:
+    print_pair_examples(
+        cfg_from_args(args),
+        feature_i=args.feature_i,
+        feature_j=args.feature_j,
+        n=args.n,
+    )
+
+
+def cmd_inspect_bimodal_feature(args: argparse.Namespace) -> None:
+    print_bimodal_feature_examples(cfg_from_args(args), feature_id=args.feature_id, n=args.n)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -173,14 +307,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_args(p)
     p.set_defaults(func=cmd_resolve_sae)
 
-    p = sub.add_parser("plan")
+    p = sub.add_parser("plan", help="Preview resolved config, selected steps, and artifact status.")
     add_common_args(p)
     p.add_argument("--preset", default="research", choices=sorted(STEP_PRESETS))
     p.add_argument("--steps", default="all")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_plan)
 
-    p = sub.add_parser("smoke-test")
+    p = sub.add_parser("smoke-test", help="Load and validate the selected model/SAE without running analysis.")
     add_common_args(p)
     p.set_defaults(func=cmd_smoke_test)
 
@@ -205,6 +339,25 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("report")
     add_common_args(p)
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("inspect-feature", help="Print top activation examples for one feature.")
+    add_common_args(p)
+    p.add_argument("--feature-id", type=int, required=True)
+    p.add_argument("--n", type=int, default=10)
+    p.set_defaults(func=cmd_inspect_feature)
+
+    p = sub.add_parser("inspect-pair", help="Print diagnostics and examples for a feature pair.")
+    add_common_args(p)
+    p.add_argument("--feature-i", type=int, required=True)
+    p.add_argument("--feature-j", type=int, required=True)
+    p.add_argument("--n", type=int, default=10)
+    p.set_defaults(func=cmd_inspect_pair)
+
+    p = sub.add_parser("inspect-bimodal-feature", help="Print low/median/high activation examples for one feature.")
+    add_common_args(p)
+    p.add_argument("--feature-id", type=int, required=True)
+    p.add_argument("--n", type=int, default=6)
+    p.set_defaults(func=cmd_inspect_bimodal_feature)
 
     return parser
 
