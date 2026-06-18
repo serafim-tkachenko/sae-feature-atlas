@@ -3,11 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.preprocessing import LabelEncoder
 
 from sae_feature_atlas.analysis.geometry import get_decoder_weight
-from sae_feature_atlas.analysis.labels import primary_label
 
 
 def compute_residual_pca(residual_vectors_path, n_components: int = 20) -> pd.DataFrame:
@@ -123,58 +120,10 @@ def compute_decoder_umap(
                 "artifact_score",
                 "bimodality_score",
                 "manual_priority",
-                "inspection_labels"]
+                "primary_label",
+                "inspection_labels",
+            ]
             if c in feature_cards.columns
         ]
         df = df.merge(feature_cards[keep], on="feature_id", how="left")
     return df
-
-
-def compute_decoder_lda(
-    sae,
-    feature_cards: pd.DataFrame,
-    min_class_size: int = 20,
-) -> pd.DataFrame:
-    """Supervised LDA projection over decoder vectors using heuristic labels
-
-    This is not topic-model LDA. It is Linear Discriminant Analysis. In this
-    project it is used as a supervised diagnostic: do heuristic labels such as
-    artifact/bimodal/high-frequency occupy separable directions in decoder space?
-    """
-
-    if feature_cards.empty or "inspection_labels" not in feature_cards.columns:
-        return pd.DataFrame()
-
-    cards = feature_cards.copy()
-    cards["primary_label"] = cards["inspection_labels"].map(primary_label)
-    counts = cards["primary_label"].value_counts()
-    valid_labels = counts[counts >= min_class_size].index.tolist()
-    cards = cards[cards["primary_label"].isin(valid_labels)].copy()
-
-    if cards["primary_label"].nunique() < 2:
-        return pd.DataFrame()
-
-    W_dec = _decoder_matrix(sae, normalize=True)
-    feature_ids = cards["feature_id"].astype(int).to_numpy()
-    X = W_dec[feature_ids]
-
-    encoder = LabelEncoder()
-    y = encoder.fit_transform(cards["primary_label"])
-    n_components = min(2, len(encoder.classes_) - 1, X.shape[1])
-    if n_components < 1:
-        return pd.DataFrame()
-
-    lda = LinearDiscriminantAnalysis(n_components=n_components)
-    coords = lda.fit_transform(X, y)
-    if coords.ndim == 1:
-        coords = coords[:, None]
-
-    out = pd.DataFrame(
-        {
-            "feature_id": feature_ids,
-            "primary_label": cards["primary_label"].to_numpy(),
-            "decoder_lda1": coords[:, 0],
-            "decoder_lda2": coords[:, 1] if coords.shape[1] > 1 else 0.0,
-        }
-    )
-    return out

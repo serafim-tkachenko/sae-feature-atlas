@@ -1,13 +1,14 @@
-from sae_feature_atlas import GemmaScopeBundle, make_config
+from sae_feature_atlas import make_config
+from sae_feature_atlas.runtime.gemma_scope import GemmaScopeRuntime
 
 
 def main() -> None:
     cfg = make_config(model="gemma-3-1b-pt", layer=13, max_texts=10, top_k=10)
-    bundle = GemmaScopeBundle(cfg).load()
+    runtime = GemmaScopeRuntime(cfg).load()
 
-    print(bundle.validate())
+    print(runtime.validate())
 
-    values, indices = bundle.topk_features("London is the capital of Great Britain", top_k=10)
+    values, indices = runtime.topk_features("London is the capital of Great Britain", top_k=10)
     print("indices:", indices)
     print("values:", values)
 

@@ -227,14 +227,6 @@ def generate_plots(run_data_dir: Path, report_dir: Path) -> dict[str, str]:
                 _scatter_by_category(df, "decoder_umap_x", "decoder_umap_y", "manual_priority", "Decoder UMAP by manual priority", "UMAP-1", "UMAP-2", out)
                 add("decoder_umap_by_manual_priority", out)
 
-    p = run_data_dir / "decoder_feature_lda.parquet"
-    if p.exists():
-        df = pd.read_parquet(p)
-        if not df.empty and {"decoder_lda1", "decoder_lda2", "primary_label"}.issubset(df.columns):
-            out = plots_dir / "decoder_lda_by_primary_label.png"
-            _scatter_by_category(df, "decoder_lda1", "decoder_lda2", "primary_label", "Decoder LDA by heuristic primary label", "LDA-1", "LDA-2", out)
-            add("decoder_lda_by_primary_label", out)
-
     p = run_data_dir / "feature_coverage_profiles.parquet"
     if p.exists():
         df = pd.read_parquet(p)
@@ -276,7 +268,7 @@ def generate_html_tables(run_data_dir: Path, report_dir: Path, n: int = 40) -> d
     specs = {
         "feature_cards": ("feature_cards.parquet", ["manual_priority", "artifact_score"], "Canonical feature-card preview"),
         "top_features": ("feature_stats.parquet", ["n_token_activations", "p99_activation"], "Top raw feature statistics"),
-        "top_bimodal_features": ("bimodal_feature_candidates.parquet", ["bimodality_score"], "Top bimodality candidates"),
+        "top_bimodal_features": ("bimodal_feature_candidates.parquet", ["bimodality_score"], "Top bimodality-ranked features"),
         "geometry_quadrants": ("geometry_vs_coactivation.parquet", ["decoder_cosine", "jaccard"], "Geometry/coactivation pair diagnostics"),
         "inspection_features": ("inspection_feature_summaries.parquet", ["manual_priority", "artifact_score"], "Automated inspection feature summaries"),
         "inspection_pairs": ("inspection_pair_summaries.parquet", ["pair_artifact_score"], "Automated inspection pair summaries"),

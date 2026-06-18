@@ -62,9 +62,9 @@ def build_bimodal_peak_examples(
     examples_per_peak: int = 8,
     context_window: int = 20,
 ) -> pd.DataFrame:
-    """Build low/high activation-regime examples for candidate bimodal features.
+    """Build low/high activation-regime examples for ranked bimodal features.
 
-    The output addresses the mentor-plan question behind bimodality: not only
+    The output addresses the analysis question behind bimodality: not only
     whether a feature has two activation-strength modes, but which token contexts
     belong to the low and high modes.
     """
@@ -76,8 +76,8 @@ def build_bimodal_peak_examples(
     if missing:
         raise ValueError(f"Activation table is missing columns needed for regime examples: {sorted(missing)}")
 
-    candidate_ids = candidates.head(top_features)["feature_id"].astype(int).tolist()
-    candidate_score = dict(
+    ranked_ids = candidates.head(top_features)["feature_id"].astype(int).tolist()
+    bimodality_score_by_feature = dict(
         zip(
             candidates["feature_id"].astype(int),
             candidates.get("bimodality_score", pd.Series([np.nan] * len(candidates))),
@@ -85,7 +85,7 @@ def build_bimodal_peak_examples(
     )
     rows: list[pd.DataFrame] = []
 
-    for feature_id in tqdm(candidate_ids, desc="Bimodal low/high examples"):
+    for feature_id in tqdm(ranked_ids, desc="Bimodal low/high examples"):
         feature_rows = acts[acts["feature_id"].astype(int).eq(feature_id)].copy()
         if feature_rows.empty:
             continue
@@ -103,7 +103,7 @@ def build_bimodal_peak_examples(
         feature_rows["peak_label"] = np.where(labels == low_component, "low", "high")
         feature_rows["peak_log_mean_low"] = float(means[low_component])
         feature_rows["peak_log_mean_high"] = float(means[high_component])
-        feature_rows["bimodality_score"] = float(candidate_score.get(feature_id, np.nan))
+        feature_rows["bimodality_score"] = float(bimodality_score_by_feature.get(feature_id, np.nan))
 
         low = feature_rows[feature_rows["peak_label"].eq("low")].sort_values("activation", ascending=False).head(examples_per_peak)
         high = feature_rows[feature_rows["peak_label"].eq("high")].sort_values("activation", ascending=False).head(examples_per_peak)

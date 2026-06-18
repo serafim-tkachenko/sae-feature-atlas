@@ -100,7 +100,7 @@ def compute_feature_coverage_profiles(
 
     This distinction is essential. If the run only has 20 PCA components, then
     `pc_norm_mass_top_20 == 1.0` for every feature by construction; it must not
-    be used as a strong scientific or steering signal.
+    be used as a strong scientific signal.
     """
     feature_ids = [int(fid) for fid in feature_ids]
     if not feature_ids:

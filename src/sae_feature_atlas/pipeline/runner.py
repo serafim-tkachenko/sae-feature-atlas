@@ -25,94 +25,14 @@ from sae_feature_atlas.inspection.inspection import (
 from sae_feature_atlas.util.io import ensure_project_dirs
 from sae_feature_atlas.runtime.loaders import get_device, load_model, load_sae, validate_model_sae_compatibility
 from sae_feature_atlas.pipeline.manifest import build_run_manifest, write_run_manifest
+from sae_feature_atlas.pipeline.steps import ALL_STEPS, STEP_PRESETS, normalize_steps
 from sae_feature_atlas.report.markdown import write_report
+from sae_feature_atlas.analysis.labels import assign_feature_labels
 from sae_feature_atlas.analysis.space import (
-    compute_decoder_lda,
     compute_decoder_pca,
     compute_decoder_umap,
     compute_residual_pca,
 )
-
-
-CORE_STEPS = ["collect"]
-
-ATLAS_STEPS = [
-    "collect",
-    "features",
-    "coactivation",
-    "geometry",
-    "geometry-vs-coactivation",
-    "bimodality",
-    "inspection",
-    "space",
-    "cards",
-    "report"]
-
-RESEARCH_STEPS = [
-    "collect",
-    "features",
-    "coactivation",
-    "geometry",
-    "geometry-vs-coactivation",
-    "bimodality",
-    "inspection",
-    "space",
-    "coverage",
-    "alignment",
-    "cards",
-    "report"]
-
-STEP_PRESETS: dict[str, list[str]] = {
-    "core": CORE_STEPS,
-    "atlas": ATLAS_STEPS,
-    "research": RESEARCH_STEPS,
-}
-
-ALL_STEPS = [
-    "collect",
-    "features",
-    "coactivation",
-    "geometry",
-    "geometry-vs-coactivation",
-    "bimodality",
-    "inspection",
-    "space",
-    "coverage",
-    "alignment",
-    "cards",
-    "report"]
-
-
-def normalize_steps(steps: str | list[str] = "all", preset: str | None = None) -> list[str]:
-    """Normalize user step selection into an executable step list.
-
-    Presets define the architectural layers of the project:
-    - core: data collection and Gemma Scope activation extraction;
-    - atlas: reusable feature-card atlas generation;
-    - research: atlas plus geometry-aware research metrics;
-    """
-    if preset is not None:
-        if preset not in STEP_PRESETS:
-            raise ValueError(f"Unknown preset {preset!r}. Available: {sorted(STEP_PRESETS)}")
-        if steps in (None, "all"):
-            return STEP_PRESETS[preset]
-
-    raw = [s.strip() for s in steps.split(",")] if isinstance(steps, str) else list(steps)
-    raw = [s for s in raw if s]
-
-    if not raw or "all" in raw:
-        return STEP_PRESETS.get(preset or "atlas", ATLAS_STEPS)
-
-    if len(raw) == 1 and raw[0] in STEP_PRESETS:
-        return STEP_PRESETS[raw[0]]
-
-    unknown = sorted(set(raw) - set(ALL_STEPS))
-    if unknown:
-        raise ValueError(
-            f"Unknown steps: {unknown}. Available steps: {ALL_STEPS}. "
-            f"Available presets: {sorted(STEP_PRESETS)}"
-        )
-    return raw
 
 
 def run_collect(cfg: ExperimentConfig) -> dict:
@@ -206,6 +126,55 @@ def run_bimodality(cfg: ExperimentConfig) -> dict:
         "bimodal_peak_example_rows": int(len(peak_examples)),
     }
 
+
+def _load_feature_metadata_for_projection(cfg: ExperimentConfig) -> pd.DataFrame | None:
+    """Load lightweight feature metadata for projection plots.
+
+    PCA and UMAP are unsupervised geometry diagnostics. Labels and scores are
+    merged only so plots can be colored for
+    manual triage.
+    """
+    if not cfg.feature_stats_path.exists():
+        return None
+
+    meta = pd.read_parquet(cfg.feature_stats_path)
+    keep = [
+        c
+        for c in ["feature_id", "token_frequency", "p99_activation", "n_token_activations"]
+        if c in meta.columns
+    ]
+    meta = meta[keep].copy()
+
+    if cfg.inspection_feature_summaries_path.exists():
+        inspection = pd.read_parquet(cfg.inspection_feature_summaries_path)
+        inspect_cols = [
+            c
+            for c in [
+                "feature_id",
+                "artifact_score",
+                "semantic_score",
+                "manual_priority",
+                "inspection_labels",
+            ]
+            if c in inspection.columns
+        ]
+        if len(inspect_cols) > 1:
+            meta = meta.merge(inspection[inspect_cols], on="feature_id", how="left")
+
+    if cfg.bimodal_candidates_path.exists():
+        bimodal = pd.read_parquet(cfg.bimodal_candidates_path)
+        bimodal_cols = [c for c in ["feature_id", "bimodality_score"] if c in bimodal.columns]
+        if len(bimodal_cols) > 1:
+            meta = meta.merge(bimodal[bimodal_cols], on="feature_id", how="left")
+
+    try:
+        meta = assign_feature_labels(meta)
+    except Exception:
+        # Projection metadata is optional; never fail the space step because a
+        # label enrichment column is missing.
+        pass
+    return meta
+
 def run_space(cfg: ExperimentConfig) -> dict:
     """Compute residual-space and SAE decoder-space projections."""
     metrics: dict[str, int] = {}
@@ -231,11 +200,11 @@ def run_space(cfg: ExperimentConfig) -> dict:
     metrics["decoder_pca_components"] = int(len(summary))
     metrics["decoder_feature_projection_rows"] = int(len(projection))
 
-    cards = pd.read_parquet(cfg.feature_cards_path) if cfg.feature_cards_path.exists() else None
+    feature_metadata = _load_feature_metadata_for_projection(cfg)
     try:
         umap_df = compute_decoder_umap(
             sae,
-            cards,
+            feature_metadata,
             n_neighbors=cfg.analysis.umap_neighbors,
             min_dist=cfg.analysis.umap_min_dist,
             metric=cfg.analysis.umap_metric,
@@ -246,17 +215,6 @@ def run_space(cfg: ExperimentConfig) -> dict:
     except ImportError as exc:
         print(f"Skipping decoder UMAP: {exc}")
         metrics["decoder_umap_rows"] = 0
-
-    if cfg.feature_cards_path.exists():
-        labeled_cards = pd.read_parquet(cfg.feature_cards_path)
-        lda_df = compute_decoder_lda(
-            sae,
-            labeled_cards,
-            min_class_size=cfg.analysis.lda_min_class_size,
-        )
-        if not lda_df.empty:
-            lda_df.to_parquet(cfg.decoder_feature_lda_path, index=False)
-        metrics["decoder_lda_rows"] = int(len(lda_df))
 
     return metrics
 

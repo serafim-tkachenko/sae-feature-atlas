@@ -121,7 +121,7 @@ CORPUS_REGISTRY: dict[str, CorpusDescriptor] = {
     ),
     "mixed-large": CorpusDescriptor(
         name="mixed-large",
-        description="Larger broad corpus preset intended for paper-like runs.",
+        description="Larger broad corpus preset for heavier research runs.",
         domains=("general", "web", "encyclopedic", "stories", "education"),
         size="large",
         streaming=True,

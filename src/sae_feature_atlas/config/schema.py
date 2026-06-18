@@ -81,8 +81,6 @@ class AnalysisConfig:
     umap_min_dist: float = 0.10
     umap_metric: str = "cosine"
     umap_random_state: int = 42
-    lda_min_class_size: int = 20
-
     # Research-grade geometry extensions.
     coverage_top_components: tuple[int, ...] = (1, 5, 20)
     graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
@@ -186,10 +184,6 @@ class ExperimentConfig:
         return self.run_data_dir / "decoder_feature_umap.parquet"
 
     @property
-    def decoder_feature_lda_path(self) -> Path:
-        return self.run_data_dir / "decoder_feature_lda.parquet"
-
-    @property
     def feature_coverage_profiles_path(self) -> Path:
         return self.run_data_dir / "feature_coverage_profiles.parquet"
 
@@ -200,8 +194,6 @@ class ExperimentConfig:
     @property
     def graph_alignment_summary_path(self) -> Path:
         return self.run_data_dir / "graph_alignment_summary.parquet"
-
-    @property
 
     @property
     def inspection_feature_summaries_path(self) -> Path:

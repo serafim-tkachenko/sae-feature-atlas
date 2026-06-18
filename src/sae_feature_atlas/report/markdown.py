@@ -79,12 +79,12 @@ def _artifact_line(label: str, path: Path, note: str) -> str:
     return f"- `{path.name}` — **{label}**, shape/status: `{_shape(path)}`. {note}"
 
 
-def _mentor_checklist(cfg: ExperimentConfig) -> list[str]:
+def _analysis_checklist(cfg: ExperimentConfig) -> list[str]:
     checks = [
         ("0", "Activation dataset", cfg.sae_activations_path, "SAE activations and token metadata are saved for notebook access."),
         ("1", "Feature filtering", cfg.filtered_features_path, "Rare/over-common features are filtered before pair/geometry analysis."),
         ("2", "Coactivation", cfg.coactivation_pairs_path, "Same-token feature coactivation pairs are computed."),
-        ("3", "Bimodal activation regimes", cfg.bimodal_peak_examples_path, "Low/high activation-regime examples are available for candidate features."),
+        ("3", "Bimodal activation regimes", cfg.bimodal_peak_examples_path, "Low/high activation-regime examples are available for ranked features."),
         ("4", "Decoder geometry vs coactivation", cfg.geometry_vs_coactivation_path, "Nearest decoder directions are compared with empirical coactivation."),
         ("5", "Decoder directions vs residual PCA", cfg.feature_coverage_profiles_path, "SAE decoder directions are projected onto sampled residual PCA components."),
         ("6", "Decoder direction PC spread", cfg.feature_coverage_profiles_path, "Effective PC dimension / entropy describe how spread decoder directions are.")]
@@ -123,7 +123,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
     lines: list[str] = [
         f"# SAE Feature Atlas report: `{cfg.collection.run_name}`",
         "",
-        "This report is organized around the mentor research plan: collect SAE activations, filter features, study coactivation, inspect bimodal activation regimes, compare decoder geometry with empirical coactivation, and relate SAE decoder directions to residual PCA structure.",
+        "This report is organized around the analysis workflow: collect SAE activations, filter features, study coactivation, inspect bimodal activation regimes, compare decoder geometry with empirical coactivation, and relate SAE decoder directions to residual PCA structure.",
         "",
         "## 1. Run overview",
         "",
@@ -135,9 +135,9 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         f"- Top-k: `{cfg.collection.top_k_features_per_token}`",
         f"- Max texts / seq len: `{cfg.collection.max_texts}` / `{cfg.collection.max_seq_len}`",
         "",
-        "## 2. Mentor-plan checklist",
+        "## 2. Analysis checklist",
         "",
-        *_mentor_checklist(cfg),
+        *_analysis_checklist(cfg),
         "",
         "## 3. Core activation dataset",
         "",
@@ -169,7 +169,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "",
         "This section addresses whether a feature has weak/high activation regimes and shows examples from both regimes for manual interpretation.",
         "",
-        f"- Bimodal candidates: `{_shape(cfg.bimodal_candidates_path)}`",
+        f"- Bimodality-ranked features: `{_shape(cfg.bimodal_candidates_path)}`",
         f"- Low/high regime examples: `{_shape(cfg.bimodal_peak_examples_path)}`",
         "",
         _markdown_table(top_bimodal, ["feature_id", "n_points", "bimodality_score", "log_mean_low", "log_mean_high", "activation_p50", "activation_p95", "activation_max"], n=15),
@@ -212,7 +212,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "- Feature cards are multi-evidence profiles, not final explanations.",
         "- Automated labels are heuristic triage, not ground-truth semantics.",
         "- In `topk` mode, feature frequency means occurrence among stored top-k activations, not true positive activation frequency.",
-        "- Bimodality is a statistical candidate signal; low/high examples require manual interpretation.",
+        "- Bimodality is a statistical statistical signal; low/high examples require manual interpretation.",
         "- Decoder cosine does not prove semantic similarity or causal interaction.",
         "- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.",
         "",
@@ -262,7 +262,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
         f'<li><a href="{escape(_relative(cfg.run_reports_dir, path))}">{escape(name)}</a></li>'
         for name, path in sorted(tables.items())
     )
-    checklist = "".join(f"<li>{escape(line)}</li>" for line in _mentor_checklist(cfg))
+    checklist = "".join(f"<li>{escape(line)}</li>" for line in _analysis_checklist(cfg))
 
     html = f"""
 <!doctype html>
@@ -290,7 +290,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
     <div class="card"><strong>Feature cards</strong><br>{len(cards):,}</div>
   </div>
 
-  <h2>Mentor-plan checklist</h2>
+  <h2>Analysis checklist</h2>
   <ul>{checklist}</ul>
 
   <h2>Feature population</h2>
@@ -312,7 +312,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
   <h2>Interpretation caveats</h2>
   <ul>
     <li>Feature cards are multi-evidence profiles, not final explanations.</li>
-    <li>Bimodality is a candidate signal; low/high examples require manual review.</li>
+    <li>Bimodality is a statistical signal; low/high examples require manual review.</li>
     <li>Decoder geometry and coactivation are related but distinct signals.</li>
   </ul>
 </body>

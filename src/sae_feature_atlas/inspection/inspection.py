@@ -182,17 +182,17 @@ def _feature_labels_from_scores(
     # This is deliberately weaker than "semantic feature".
     # It means "worth manually inspecting as a potentially interpretable feature".
     if (
-    artifact_score < 0.10
-    and semantic_score >= 0.95
-    and n_activations >= 100
-    and token_concentration < 0.20
-    and position_concentration < 0.25
-    and punctuation_share < 0.20
-    and quote_share < 0.05
-    and space_share < 0.10
-    and boundary_share < 0.15
-):
-        labels.append("inspection_candidate")
+        artifact_score < 0.10
+        and semantic_score >= 0.95
+        and n_activations >= 100
+        and token_concentration < 0.20
+        and position_concentration < 0.25
+        and punctuation_share < 0.20
+        and quote_share < 0.05
+        and space_share < 0.10
+        and boundary_share < 0.15
+    ):
+        labels.append("manual_review")
     
     return labels
 
@@ -576,10 +576,10 @@ def write_inspection_reports(
         reverse=True,
     )[:20]
 
-    inspection_candidates = sorted(
+    manual_reviews = sorted(
         [
             x for x in feature_summaries
-            if "inspection_candidate" in x.get("inspection_labels", [])
+            if "manual_review" in x.get("inspection_labels", [])
         ],
         key=lambda x: x.get("semantic_score", 0),
         reverse=True,
@@ -606,7 +606,7 @@ def write_inspection_reports(
     lines.append("- boundary-position-heavy features")
     lines.append("- token-concentrated features")
     lines.append("- suspicious coactivation cliques")
-    lines.append("- candidate features for manual semantic inspection")
+    lines.append("- features that look worth manual semantic inspection")
     lines.append("")
     lines.append("Note: `source_concentrated` is only used when the run contains multiple source categories.")
     lines.append("")
@@ -635,9 +635,9 @@ def write_inspection_reports(
         lines.append("```")
         lines.append("")
 
-    lines.append("## Top inspection candidates")
+    lines.append("## Top manual-review features")
     lines.append("")
-    for item in inspection_candidates:
+    for item in manual_reviews:
         lines.append(f"### Feature {item['feature_id']}")
         lines.append(f"- Semantic score: `{item.get('semantic_score', math.nan):.3f}`")
         lines.append(f"- Artifact score: `{item.get('artifact_score', math.nan):.3f}`")
@@ -667,7 +667,7 @@ def write_inspection_reports(
         lines.append("```")
         lines.append("")
 
-    lines.append("## Bimodality candidate summaries")
+    lines.append("## Bimodality-ranked feature summaries")
     lines.append("")
     for item in bimodal_summaries[:30]:
         lines.append(f"### Feature {item['feature_id']}")

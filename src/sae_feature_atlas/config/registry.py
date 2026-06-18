@@ -80,8 +80,22 @@ def infer_gemma_scope_release(model: str, site: str) -> str:
     return f"gemma-scope-2-{short}-{suffix}"
 
 
+SITE_ALIASES: dict[str, str] = {
+    "res": "resid_post",
+    "mlp": "mlp_out",
+    "att": "attn_out",
+}
+
+
+def normalize_site(site: str) -> str:
+    normalized = SITE_ALIASES.get(site, site)
+    if normalized not in {"resid_post", "mlp_out", "attn_out"}:
+        raise ValueError(f"Unsupported site {site!r}. Supported: {sorted(SITE_TO_RELEASE_SUFFIX)}")
+    return normalized
+
+
 def infer_hook_name(layer: int, site: str) -> str:
-    normalized_site = "resid_post" if site == "res" else site
+    normalized_site = normalize_site(site)
     if normalized_site == "resid_post":
         return f"blocks.{layer}.hook_resid_post"
     if normalized_site == "mlp_out":
@@ -105,7 +119,8 @@ def infer_run_name(
     top_k: int,
 ) -> str:
     model_part = normalize_model_alias(model).replace("-", "")
-    site_part = "res" if site in {"res", "resid_post"} else site.replace("_out", "")
+    normalized_site = normalize_site(site)
+    site_part = "res" if normalized_site == "resid_post" else normalized_site.replace("_out", "")
     corpus_part = corpus.replace("/", "_").replace("-", "")
     if activation_mode == "topk":
         return f"{model_part}_l{layer}_{site_part}{width}_{corpus_part}_top{top_k}"
@@ -123,7 +138,7 @@ def resolve_gemma_scope_sae(selection: ModelSelection) -> ModelConfig:
         sae_id=infer_sae_id(layer=layer, width=selection.width, l0=l0),
         layer=layer,
         hook_name=infer_hook_name(layer=layer, site=selection.site),
-        site=selection.site,
+        site=normalize_site(selection.site),
         width=selection.width,
         l0=l0,
         d_model=None,

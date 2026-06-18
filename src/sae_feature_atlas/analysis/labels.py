@@ -95,7 +95,7 @@ def primary_label(label_string: str) -> str:
         "bimodal_candidate",
         "high_intensity",
         "high_frequency",
-        "inspection_candidate",
+        "manual_review",
         "rare_feature"]
 
     for label in priority:
@@ -110,8 +110,8 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
 
     Important rule:
     we should not call a feature semantic just because it is not an obvious
-    artifact. `inspection_candidate` only means "high-quality manual inspection
-    candidate", not "semantic feature".
+    artifact. `manual_review` only means "worth manual inspection",
+    not "semantic feature".
     """
     out = cards.copy()
 
@@ -195,35 +195,35 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
         coactivation_hub = max_coactivation_jaccard >= coactivation_threshold
     add_label(coactivation_hub, "coactivation_hub")
 
-    # Strict global inspection candidate. This intentionally duplicates the
+    # Strict global manual-review label. This intentionally duplicates the
     # inspection-layer logic so old broad labels from previous runs do not leak.
-    strict_inspection_candidate = (
+    strict_manual_review = (
         artifact_available
         & ~likely_artifact
         & (n_token_activations >= 100)
         & (artifact_score < 0.10)
         & (semantic_score >= 0.95)
     )
-    add_label(strict_inspection_candidate, "inspection_candidate")
+    add_label(strict_manual_review, "manual_review")
 
     cleaned_labels = []
     for labels in existing_labels:
         labels.discard("semantic_candidate")
         labels.discard("source_concentrated")
 
-        # If inspection_candidate was added by an older, looser inspection run,
+        # If manual_review was added by an older, looser inspection run,
         # keep it only if the strict global condition still holds.
-        labels.discard("inspection_candidate")
+        labels.discard("manual_review")
 
         cleaned_labels.append(labels)
 
     out["inspection_labels"] = [",".join(sorted(labels)) for labels in cleaned_labels]
 
-    # Re-add strict inspection candidates after cleanup.
+    # Re-add strict manual-review features after cleanup.
     existing_labels = [_split_labels(v) for v in out["inspection_labels"].tolist()]
-    for idx, active in enumerate(strict_inspection_candidate.tolist()):
+    for idx, active in enumerate(strict_manual_review.tolist()):
         if active:
-            existing_labels[idx].add("inspection_candidate")
+            existing_labels[idx].add("manual_review")
 
     out["inspection_labels"] = [",".join(sorted(labels)) for labels in existing_labels]
     out["primary_label"] = out["inspection_labels"].map(primary_label)
@@ -241,12 +241,12 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
         & ~likely_artifact
     )
 
-    # inspection_candidate is useful, but not automatically "high" unless it is
+    # manual_review is useful, but not automatically "high" unless it is
     # also selected by another scientific signal.
     medium_priority = (
         out["primary_label"].isin(
             [
-                "inspection_candidate",
+                "manual_review",
                 "high_frequency",
                 "high_intensity",
                 "rare_feature"]
@@ -263,7 +263,7 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     out.loc[missing_priority & unreviewed, "manual_priority"] = "unreviewed"
 
     # Recompute stale priorities from previous broader runs
-    out.loc[out["primary_label"].eq("inspection_candidate"), "manual_priority"] = "medium"
+    out.loc[out["primary_label"].eq("manual_review"), "manual_priority"] = "medium"
     out.loc[likely_artifact, "manual_priority"] = "low"
 
     out["manual_priority"] = out["manual_priority"].fillna("unreviewed")

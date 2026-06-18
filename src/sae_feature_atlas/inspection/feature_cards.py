@@ -298,16 +298,6 @@ def _merge_decoder_umap(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
     return _merge_replace(cards, umap_df[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
 
 
-def _merge_decoder_lda(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
-    if not cfg.decoder_feature_lda_path.exists():
-        return cards
-    lda = pd.read_parquet(cfg.decoder_feature_lda_path)
-    keep = [col for col in ["feature_id", "decoder_lda1", "decoder_lda2"] if col in lda.columns]
-    if len(keep) <= 1:
-        return cards
-    return _merge_replace(cards, lda[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
-
-
 def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
     if not cfg.feature_coverage_profiles_path.exists():
         return cards
@@ -355,10 +345,8 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
     cards = _merge_coactivation(cards, cfg)
     cards = _merge_decoder_pca(cards, cfg)
     cards = _merge_decoder_umap(cards, cfg)
-    cards = _merge_decoder_lda(cards, cfg)
     cards = _merge_coverage(cards, cfg)
     cards = _merge_alignment(cards, cfg)
-    cards = _merge_candidates(cards, cfg)
 
     cards = assign_feature_labels(cards)
 
@@ -396,8 +384,6 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "decoder_pc2",
         "decoder_umap_x",
         "decoder_umap_y",
-        "decoder_lda1",
-        "decoder_lda2",
         "bimodal_low_examples_json",
         "bimodal_high_examples_json",
         "top_examples_json",
