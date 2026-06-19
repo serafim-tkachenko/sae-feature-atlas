@@ -53,6 +53,16 @@ class ActivationRowFilterConfig:
     exclude_sources: tuple[str, ...] = ()
     min_activation: float | None = None
     require_finite_activation: bool = True
+    exclude_token_quality_kinds: tuple[str, ...] = (
+        "space",
+        "special",
+        "quote",
+        "punctuation",
+        "symbol",
+        "mojibake",
+        "control",
+    )
+    keep_token_quality_columns: bool = True
 
 
 @dataclass(frozen=True)

@@ -252,7 +252,7 @@ def run_alignment(cfg: ExperimentConfig) -> dict:
 
 
 def run_inspection(cfg: ExperimentConfig) -> dict:
-    acts = pd.read_parquet(cfg.sae_activations_path)
+    acts = apply_activation_row_filters(pd.read_parquet(cfg.sae_activations_path), cfg.activation_filter)
     top_examples = pd.read_parquet(cfg.top_examples_path)
     filtered = pd.read_parquet(cfg.filtered_features_path)
 

@@ -3,11 +3,18 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from sae_feature_atlas.analysis.token_quality import (
+    attach_token_quality_flags,
+    token_quality_columns,
+    token_quality_keep_mask,
+)
 from sae_feature_atlas.config.schema import ActivationRowFilterConfig, FeatureFilterConfig
 
 
 def apply_activation_row_filters(acts: pd.DataFrame, cfg: ActivationRowFilterConfig) -> pd.DataFrame:
+    """Apply row-level filters before feature statistics and downstream analysis"""
     filtered = acts.copy()
+
     if cfg.require_finite_activation:
         filtered = filtered[np.isfinite(filtered["activation"])]
     if cfg.include_sources is not None:
@@ -25,8 +32,16 @@ def apply_activation_row_filters(acts: pd.DataFrame, cfg: ActivationRowFilterCon
         for substring in cfg.exclude_token_substrings:
             mask = mask | filtered["token_str"].astype(str).str.contains(substring, regex=False, na=False)
         filtered = filtered[~mask]
+
+    if getattr(cfg, "exclude_token_quality_kinds", ()):
+        filtered = attach_token_quality_flags(filtered)
+        filtered = filtered[token_quality_keep_mask(filtered, cfg.exclude_token_quality_kinds)]
+        if not getattr(cfg, "keep_token_quality_columns", True):
+            filtered = filtered.drop(columns=token_quality_columns(filtered), errors="ignore")
+
     if cfg.min_activation is not None:
         filtered = filtered[filtered["activation"] >= cfg.min_activation]
+
     return filtered.copy()
 
 
