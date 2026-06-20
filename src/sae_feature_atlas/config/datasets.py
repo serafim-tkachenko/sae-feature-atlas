@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -105,27 +106,27 @@ CORPUS_REGISTRY: dict[str, CorpusDescriptor] = {
     ),
     "mixed-research": CorpusDescriptor(
         name="mixed-research",
-        description="Balanced small/medium research mix across Pile and FineWeb-Edu.",
+        description="Document-balanced small/medium research mix across Pile and FineWeb-Edu.",
         domains=("general", "web", "education", "manual probes"),
         size="medium",
         streaming=True,
-        notes="Recommended default for pilot research runs.",
+        notes="Recommended default for pilot runs. Document shares are fixed before tokenization; token shares may differ.",
     ),
     "mixed-broad": CorpusDescriptor(
         name="mixed-broad",
-        description="Broader mix across Pile, FineWeb-Edu, Wikipedia, TinyStories, code/math probes.",
+        description="Document-balanced broad mix across Pile, FineWeb-Edu, Wikipedia, TinyStories, and small manual probes.",
         domains=("general", "web", "encyclopedic", "stories", "code", "math"),
         size="medium-large",
         streaming=True,
-        notes="Better for reducing corpus-specific conclusions; still inspect source composition.",
+        notes="Manual math/code rows are qualitative probes, not representative 5% slices. Inspect saved source summaries before making corpus-level claims.",
     ),
     "mixed-large": CorpusDescriptor(
         name="mixed-large",
-        description="Larger broad corpus preset for heavier research runs.",
+        description="Larger document-balanced broad corpus preset for heavier research runs.",
         domains=("general", "web", "encyclopedic", "stories", "education"),
         size="large",
         streaming=True,
-        notes="Use with higher max_texts/max_seq_len and expect longer collection time.",
+        notes="Use with higher max_texts/max_seq_len and expect longer collection time. Document shares are fixed before tokenization; token shares may differ.",
     ),
 }
 
@@ -284,6 +285,39 @@ def _append_manual_probe_texts(texts: list[dict]) -> list[dict]:
     return texts
 
 
+def _summary_sidecar_path(path: Path, suffix: str) -> Path:
+    return path.with_name(f"{path.stem}_{suffix}.csv")
+
+
+def summarize_text_sources(texts: list[dict]) -> pd.DataFrame:
+    """Return document counts and shares by source for a loaded text corpus."""
+
+    total = len(texts)
+    counts = Counter(str(item.get("source", "unknown")) for item in texts)
+    rows = [
+        {"source": source, "texts": int(count), "text_share": count / total if total else 0.0}
+        for source, count in counts.most_common()
+    ]
+    return pd.DataFrame(rows, columns=["source", "texts", "text_share"])
+
+
+def summarize_token_sources(token_meta: pd.DataFrame) -> pd.DataFrame:
+    """Return post-tokenization token counts and shares by source."""
+
+    columns = ["source", "texts", "tokens", "token_share"]
+    if token_meta.empty:
+        return pd.DataFrame(columns=columns)
+
+    summary = (
+        token_meta.groupby("source", dropna=False)
+        .agg(texts=("text_id", "nunique"), tokens=("token_id", "size"))
+        .reset_index()
+    )
+    total_tokens = int(summary["tokens"].sum())
+    summary["token_share"] = summary["tokens"] / total_tokens if total_tokens else 0.0
+    return summary.sort_values(["tokens", "source"], ascending=[False, True]).reset_index(drop=True)[columns]
+
+
 def _safe_extend(texts: list[dict], loader: Callable[[int], list[dict]], n: int, fallback: Callable[[int], list[dict]] | None = None) -> None:
     if n <= 0:
         return
@@ -377,8 +411,10 @@ def build_text_dataset(cfg: ExperimentConfig) -> list[dict]:
 
 
 def save_text_dataset(cfg: ExperimentConfig, texts: list[dict]) -> None:
-    Path(cfg.paths.raw_texts_path).parent.mkdir(parents=True, exist_ok=True)
-    write_jsonl(cfg.paths.raw_texts_path, texts)
+    raw_texts_path = Path(cfg.paths.raw_texts_path)
+    raw_texts_path.parent.mkdir(parents=True, exist_ok=True)
+    write_jsonl(raw_texts_path, texts)
+    summarize_text_sources(texts).to_csv(_summary_sidecar_path(raw_texts_path, "source_summary"), index=False)
 
 
 def build_token_metadata(model, cfg: ExperimentConfig, texts: list[dict], device: str) -> pd.DataFrame:
@@ -400,4 +436,5 @@ def build_token_metadata(model, cfg: ExperimentConfig, texts: list[dict], device
     token_meta = pd.DataFrame(token_rows)
     cfg.token_metadata_path.parent.mkdir(parents=True, exist_ok=True)
     token_meta.to_parquet(cfg.token_metadata_path, index=False)
+    summarize_token_sources(token_meta).to_csv(_summary_sidecar_path(cfg.token_metadata_path, "source_summary"), index=False)
     return token_meta
