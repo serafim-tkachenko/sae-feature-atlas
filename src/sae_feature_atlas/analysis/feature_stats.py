@@ -79,26 +79,34 @@ def compute_feature_stats(
     return feature_stats.sort_values("analysis_activation_count", ascending=False)
 
 
-def build_top_examples(acts: pd.DataFrame, token_meta: pd.DataFrame, top_n: int = 20, context_window: int = 20) -> pd.DataFrame:
+def build_top_examples(
+    acts: pd.DataFrame,
+    renderer,
+    top_n: int = 20,
+    context_window: int = 20,
+    feature_ids: set[int] | None = None,
+) -> pd.DataFrame:
+    """Build analysis examples with raw token evidence and decoded display context."""
     rows: list[dict] = []
-    token_groups = {
-        text_id: group.sort_values("token_pos")["token_str"].tolist()
-        for text_id, group in token_meta.groupby("text_id")
-    }
-    for feature_id, group in tqdm(acts.groupby("feature_id"), desc="Building top examples"):
-        for rank, row in enumerate(group.sort_values("activation", ascending=False).head(top_n).itertuples(index=False), start=1):
-            toks = token_groups[row.text_id]
-            pos = int(row.token_pos)
-            rows.append({
-                "feature_id": int(feature_id),
-                "rank": int(rank),
-                "activation": float(row.activation),
-                "text_id": int(row.text_id),
-                "source": row.source,
-                "token_pos": int(pos),
-                "token_str": row.token_str,
-                "left_context": "".join(toks[max(0, pos - context_window):pos]),
-                "center_token": toks[pos] if pos < len(toks) else row.token_str,
-                "right_context": "".join(toks[pos + 1 : pos + 1 + context_window]),
-            })
+    selected = acts if feature_ids is None else acts[acts["feature_id"].isin(feature_ids)]
+    for feature_id, group in tqdm(selected.groupby("feature_id"), desc="Building top examples"):
+        ranked = group.sort_values("activation", ascending=False).head(top_n)
+        for rank, row in enumerate(ranked.itertuples(index=False), start=1):
+            context = renderer.render(
+                text_id=int(row.text_id),
+                token_pos=int(row.token_pos),
+                context_window=context_window,
+            )
+            rows.append(
+                {
+                    "feature_id": int(feature_id),
+                    "rank": int(rank),
+                    "activation": float(row.activation),
+                    "text_id": int(row.text_id),
+                    "source": row.source,
+                    "token_pos": int(row.token_pos),
+                    **context,
+                    "activation_population": "analysis_activations",
+                }
+            )
     return pd.DataFrame(rows)

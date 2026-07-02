@@ -21,41 +21,26 @@ def _fit_two_component_log_gmm(values: np.ndarray) -> GaussianMixture | None:
         return None
 
 
-def _context_rows(feature_rows: pd.DataFrame, token_meta: pd.DataFrame, context_window: int) -> pd.DataFrame:
-    """Attach token context to activation rows.
-
-    This intentionally mirrors top-example style context so bimodal low/high regimes
-    can be inspected by humans rather than treated as self-explanatory metrics.
-    """
-    if feature_rows.empty:
-        return pd.DataFrame()
-    meta = token_meta[["text_id", "token_pos", "source", "token_str"]].copy()
+def _context_rows(
+    feature_rows: pd.DataFrame,
+    renderer,
+    context_window: int,
+) -> pd.DataFrame:
+    """Attach shared raw evidence and decoded display context."""
     rows: list[dict] = []
-    grouped_meta = {int(tid): group.sort_values("token_pos") for tid, group in meta.groupby("text_id")}
     for row in feature_rows.to_dict("records"):
-        text_id = int(row["text_id"])
-        token_pos = int(row["token_pos"])
-        group = grouped_meta.get(text_id)
-        if group is None:
-            continue
-        left = group[(group["token_pos"] >= token_pos - context_window) & (group["token_pos"] < token_pos)]
-        center = group[group["token_pos"] == token_pos]
-        right = group[(group["token_pos"] > token_pos) & (group["token_pos"] <= token_pos + context_window)]
-        rows.append(
-            {
-                **row,
-                "source": row.get("source", center["source"].iloc[0] if not center.empty else ""),
-                "left_context": "".join(left["token_str"].astype(str).tolist()),
-                "center_token": center["token_str"].iloc[0] if not center.empty else "",
-                "right_context": "".join(right["token_str"].astype(str).tolist()),
-            }
+        context = renderer.render(
+            text_id=int(row["text_id"]),
+            token_pos=int(row["token_pos"]),
+            context_window=context_window,
         )
+        rows.append({**row, **context, "activation_population": "analysis_activations"})
     return pd.DataFrame(rows)
 
 
 def build_bimodal_peak_examples(
     acts: pd.DataFrame,
-    token_meta: pd.DataFrame,
+    renderer,
     candidates: pd.DataFrame,
     *,
     top_features: int = 50,
@@ -110,7 +95,7 @@ def build_bimodal_peak_examples(
         examples = pd.concat([low, high], ignore_index=True)
         if examples.empty:
             continue
-        rows.append(_context_rows(examples, token_meta, context_window=context_window))
+        rows.append(_context_rows(examples, renderer, context_window=context_window))
 
     if not rows:
         return pd.DataFrame()

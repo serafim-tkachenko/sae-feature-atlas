@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
+from transformers import AutoTokenizer
 
 from sae_feature_atlas.config.schema import ExperimentConfig
 
@@ -10,6 +11,22 @@ from sae_feature_atlas.config.schema import ExperimentConfig
 def get_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
+
+
+def load_tokenizer(cfg: ExperimentConfig):
+    """Load the model tokenizer used for contiguous context decoding."""
+    return AutoTokenizer.from_pretrained(cfg.model.model_name)
+
+
+def tokenizer_decoder(tokenizer):
+    def decode(token_ids: list[int]) -> str:
+        return tokenizer.decode(
+            token_ids,
+            skip_special_tokens=False,
+            clean_up_tokenization_spaces=False,
+        )
+
+    return decode
 
 def load_sae(cfg: ExperimentConfig, device: str) -> SAE:
     return SAE.from_pretrained(
