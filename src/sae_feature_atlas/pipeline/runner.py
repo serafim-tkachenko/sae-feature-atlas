@@ -5,15 +5,25 @@ import json
 import pandas as pd
 
 from sae_feature_atlas.activations.collect import collect_sparse_sae_activations
-from sae_feature_atlas.analysis.bimodality import compute_bimodality_candidates
+from sae_feature_atlas.analysis.bimodality import compute_bimodality
 from sae_feature_atlas.inspection.activation_regimes import build_bimodal_peak_examples
 from sae_feature_atlas.analysis.coactivation import compute_same_token_coactivation
 from sae_feature_atlas.config.schema import ExperimentConfig
 from sae_feature_atlas.analysis.coverage import compute_feature_coverage_profiles
-from sae_feature_atlas.config.datasets import build_text_dataset, build_token_metadata, save_text_dataset
-from sae_feature_atlas.inspection.feature_cards import build_and_save_feature_outputs, enrich_feature_cards
-from sae_feature_atlas.analysis.feature_filters import apply_activation_row_filters
-from sae_feature_atlas.analysis.geometry import compute_decoder_neighbors, merge_geometry_with_coactivation
+from sae_feature_atlas.config.datasets import (
+    build_text_dataset,
+    build_token_metadata,
+    save_text_dataset,
+)
+from sae_feature_atlas.inspection.feature_cards import (
+    build_and_save_feature_outputs,
+    enrich_feature_cards,
+)
+from sae_feature_atlas.analysis.populations import build_activation_populations
+from sae_feature_atlas.analysis.geometry import (
+    compute_decoder_neighbors,
+    merge_geometry_with_coactivation,
+)
 from sae_feature_atlas.analysis.graph_alignment import compute_graph_alignment
 from sae_feature_atlas.inspection.inspection import (
     feature_summaries_to_frame,
@@ -23,16 +33,37 @@ from sae_feature_atlas.inspection.inspection import (
     write_inspection_reports,
 )
 from sae_feature_atlas.util.io import ensure_project_dirs
-from sae_feature_atlas.runtime.loaders import get_device, load_model, load_sae, validate_model_sae_compatibility
+from sae_feature_atlas.runtime.loaders import (
+    get_device,
+    load_model,
+    load_sae,
+    load_tokenizer,
+    tokenizer_decoder,
+    validate_model_sae_compatibility,
+)
 from sae_feature_atlas.pipeline.manifest import build_run_manifest, write_run_manifest
-from sae_feature_atlas.pipeline.steps import ALL_STEPS, STEP_PRESETS, normalize_steps
+from sae_feature_atlas.pipeline.lineage import require_compatible_lineage, write_lineage
+from sae_feature_atlas.pipeline.steps import normalize_steps
 from sae_feature_atlas.report.markdown import write_report
+from sae_feature_atlas.inspection.context import ContextRenderer
+from sae_feature_atlas.util.io import write_json
 from sae_feature_atlas.analysis.labels import assign_feature_labels
 from sae_feature_atlas.analysis.space import (
     compute_decoder_pca,
     compute_decoder_umap,
     compute_residual_pca,
 )
+
+
+def _load_populations(cfg: ExperimentConfig):
+    stored = pd.read_parquet(cfg.sae_activations_path)
+    token_metadata = pd.read_parquet(cfg.token_metadata_path)
+    return build_activation_populations(stored, token_metadata, cfg.activation_filter)
+
+
+def _build_context_renderer(cfg: ExperimentConfig, token_metadata: pd.DataFrame) -> ContextRenderer:
+    tokenizer = load_tokenizer(cfg)
+    return ContextRenderer(token_metadata, tokenizer_decoder(tokenizer))
 
 
 def run_collect(cfg: ExperimentConfig) -> dict:
@@ -52,7 +83,10 @@ def run_collect(cfg: ExperimentConfig) -> dict:
     texts = build_text_dataset(cfg)
     save_text_dataset(cfg, texts)
     token_meta = build_token_metadata(model, cfg, texts, device)
-    acts, residual_meta, token_summary = collect_sparse_sae_activations(model, sae, cfg, texts, device)
+    acts, residual_meta, token_summary = collect_sparse_sae_activations(
+        model, sae, cfg, texts, device
+    )
+    write_lineage(cfg, stage="collect")
 
     return {
         "texts": len(texts),
@@ -65,64 +99,90 @@ def run_collect(cfg: ExperimentConfig) -> dict:
 
 
 def run_features(cfg: ExperimentConfig) -> dict:
-    return build_and_save_feature_outputs(
-        pd.read_parquet(cfg.sae_activations_path),
-        pd.read_parquet(cfg.token_metadata_path),
-        cfg,
-    )
+    populations = _load_populations(cfg)
+    renderer = _build_context_renderer(cfg, populations.stored_tokens)
+    return build_and_save_feature_outputs(populations, renderer, cfg)
 
 
 def run_coactivation(cfg: ExperimentConfig) -> dict:
-    acts = apply_activation_row_filters(pd.read_parquet(cfg.sae_activations_path), cfg.activation_filter)
-    filtered = pd.read_parquet(cfg.filtered_features_path)
-    pairs = compute_same_token_coactivation(
-        acts,
-        set(filtered["feature_id"].astype(int).tolist()),
+    populations = _load_populations(cfg)
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
+    result = compute_same_token_coactivation(
+        populations.analysis_activations,
+        set(analysis_features["feature_id"].astype(int)),
+        populations.analysis_tokens,
+        min_pair_support=cfg.analysis.coactivation_min_pair_support,
+        neighbors_per_feature=cfg.analysis.coactivation_neighbors_per_feature,
         max_pairs=cfg.analysis.coactivation_max_pairs,
+        storage_mode=cfg.collection.activation_mode,
     )
-    pairs.to_parquet(cfg.coactivation_pairs_path, index=False)
-    return {"coactivation_pairs_rows": int(len(pairs))}
+    result.pairs.to_parquet(cfg.coactivation_pairs_path, index=False)
+    write_json(cfg.coactivation_metadata_path, result.metadata)
+    return {
+        "coactivation_pairs_rows": int(len(result.pairs)),
+        **result.metadata,
+    }
 
 
 def run_geometry(cfg: ExperimentConfig) -> dict:
     sae = load_sae(cfg, get_device())
-    filtered = pd.read_parquet(cfg.filtered_features_path)
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
+    feature_ids = analysis_features["feature_id"].astype(int).tolist()
     neighbors = compute_decoder_neighbors(
         sae,
-        filtered["feature_id"].astype(int).tolist(),
+        feature_ids,
         top_k=cfg.analysis.decoder_neighbors_top_k,
         batch_size=cfg.analysis.decoder_neighbors_batch_size,
+        candidate_feature_ids=feature_ids,
     )
     neighbors.to_parquet(cfg.decoder_neighbors_path, index=False)
     return {"decoder_neighbors_rows": int(len(neighbors))}
 
 
 def run_geometry_vs_coactivation(cfg: ExperimentConfig) -> dict:
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
     merged = merge_geometry_with_coactivation(
         pd.read_parquet(cfg.decoder_neighbors_path),
         pd.read_parquet(cfg.coactivation_pairs_path),
+        set(analysis_features["feature_id"].astype(int)),
     )
     merged.to_parquet(cfg.geometry_vs_coactivation_path, index=False)
     return {"geometry_vs_coactivation_rows": int(len(merged))}
 
 
 def run_bimodality(cfg: ExperimentConfig) -> dict:
-    acts = apply_activation_row_filters(pd.read_parquet(cfg.sae_activations_path), cfg.activation_filter)
-    token_meta = pd.read_parquet(cfg.token_metadata_path)
-    candidates = compute_bimodality_candidates(acts, min_points=cfg.analysis.bimodality_min_points)
-    candidates.to_parquet(cfg.bimodal_candidates_path, index=False)
+    populations = _load_populations(cfg)
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
+    feature_ids = set(analysis_features["feature_id"].astype(int))
+    result = compute_bimodality(
+        populations.analysis_activations,
+        feature_ids,
+        min_points=cfg.analysis.bimodality_min_points,
+        delta_bic_threshold=cfg.analysis.bimodality_delta_bic_threshold,
+        min_component_weight=cfg.analysis.bimodality_min_component_weight,
+        min_separation=cfg.analysis.bimodality_min_separation,
+        random_seed=cfg.analysis.bimodality_random_seed,
+        n_init=cfg.analysis.bimodality_gmm_n_init,
+        storage_mode=cfg.collection.activation_mode,
+    )
+    result.evaluated_features.to_parquet(cfg.bimodality_evaluated_path, index=False)
+    result.candidates.to_parquet(cfg.bimodal_candidates_path, index=False)
 
+    renderer = _build_context_renderer(cfg, populations.stored_tokens)
     peak_examples = build_bimodal_peak_examples(
-        acts,
-        token_meta,
-        candidates,
+        populations.analysis_activations,
+        renderer,
+        result.candidates,
         top_features=cfg.analysis.bimodality_top_features_for_examples,
         examples_per_peak=cfg.analysis.bimodality_examples_per_peak,
         context_window=cfg.analysis.context_window,
+        random_seed=cfg.analysis.bimodality_random_seed,
+        n_init=cfg.analysis.bimodality_gmm_n_init,
     )
     peak_examples.to_parquet(cfg.bimodal_peak_examples_path, index=False)
     return {
-        "bimodal_candidates_rows": int(len(candidates)),
+        "bimodality_evaluated_rows": int(len(result.evaluated_features)),
+        "bimodal_candidates_rows": int(len(result.candidates)),
         "bimodal_peak_example_rows": int(len(peak_examples)),
     }
 
@@ -175,6 +235,7 @@ def _load_feature_metadata_for_projection(cfg: ExperimentConfig) -> pd.DataFrame
         pass
     return meta
 
+
 def run_space(cfg: ExperimentConfig) -> dict:
     """Compute residual-space and SAE decoder-space projections."""
     metrics: dict[str, int] = {}
@@ -188,7 +249,9 @@ def run_space(cfg: ExperimentConfig) -> dict:
         metrics["residual_pca_components"] = int(len(residual))
 
     sae = load_sae(cfg, get_device())
-    feature_stats = pd.read_parquet(cfg.feature_stats_path) if cfg.feature_stats_path.exists() else None
+    feature_stats = (
+        pd.read_parquet(cfg.feature_stats_path) if cfg.feature_stats_path.exists() else None
+    )
 
     summary, projection = compute_decoder_pca(
         sae,
@@ -252,11 +315,12 @@ def run_alignment(cfg: ExperimentConfig) -> dict:
 
 
 def run_inspection(cfg: ExperimentConfig) -> dict:
-    acts = apply_activation_row_filters(pd.read_parquet(cfg.sae_activations_path), cfg.activation_filter)
+    populations = _load_populations(cfg)
+    acts = populations.analysis_activations
     top_examples = pd.read_parquet(cfg.top_examples_path)
-    filtered = pd.read_parquet(cfg.filtered_features_path)
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
 
-    all_feature_ids = filtered["feature_id"].astype(int).tolist()
+    all_feature_ids = analysis_features["feature_id"].astype(int).tolist()
     feature_summaries = summarize_features_batch(
         acts=acts,
         top_examples=top_examples,
@@ -289,7 +353,9 @@ def run_inspection(cfg: ExperimentConfig) -> dict:
     bimodal_summaries = []
     if cfg.bimodal_candidates_path.exists():
         bimodal = pd.read_parquet(cfg.bimodal_candidates_path)
-        bimodal_ids = bimodal.head(cfg.analysis.inspection_top_features)["feature_id"].astype(int).tolist()
+        bimodal_ids = (
+            bimodal.head(cfg.analysis.inspection_top_features)["feature_id"].astype(int).tolist()
+        )
         for fid in bimodal_ids:
             item = feature_summary_by_id.get(fid)
             if item is not None:
@@ -334,6 +400,11 @@ def run_pipeline(
 
     for step in selected:
         print(f"=== Running step: {step} ===")
+        if step != "collect":
+            # The features step deliberately regenerates every artifact tied to
+            # the analysis population, so changed analysis policy may reuse a
+            # compatible raw collection at this boundary.
+            require_compatible_lineage(cfg, require_analysis_match=step != "features")
         if step == "collect":
             metrics[step] = run_collect(cfg)
         elif step == "features":
@@ -361,6 +432,7 @@ def run_pipeline(
             metrics[step] = {"summary": str(cfg.summary_md_path), "html": str(cfg.html_report_path)}
         else:  # pragma: no cover - normalize_steps should prevent this.
             raise ValueError(f"Unhandled pipeline step: {step}")
+        write_lineage(cfg, stage=step)
 
     write_run_manifest(cfg, build_run_manifest(cfg, metrics, stage="pipeline"))
     return metrics

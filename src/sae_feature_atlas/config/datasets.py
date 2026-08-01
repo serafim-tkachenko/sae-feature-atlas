@@ -414,6 +414,7 @@ def save_text_dataset(cfg: ExperimentConfig, texts: list[dict]) -> None:
     raw_texts_path = Path(cfg.paths.raw_texts_path)
     raw_texts_path.parent.mkdir(parents=True, exist_ok=True)
     write_jsonl(raw_texts_path, texts)
+    write_jsonl(cfg.source_texts_path, texts)
     summarize_text_sources(texts).to_csv(_summary_sidecar_path(raw_texts_path, "source_summary"), index=False)
 
 

@@ -132,6 +132,10 @@ class ExperimentConfig:
         return self.run_data_dir / "token_metadata.parquet"
 
     @property
+    def source_texts_path(self) -> Path:
+        return self.run_data_dir / "source_texts.jsonl"
+
+    @property
     def sae_activations_path(self) -> Path:
         suffix = "positive" if self.collection.activation_mode == "positive" else "topk"
         return self.run_data_dir / f"sae_activations_{suffix}.parquet"
