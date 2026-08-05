@@ -212,7 +212,7 @@ def _load_feature_metadata_for_projection(cfg: ExperimentConfig) -> pd.DataFrame
             for c in [
                 "feature_id",
                 "artifact_score",
-                "semantic_score",
+                "interpretability_triage_score",
                 "manual_priority",
                 "inspection_labels",
             ]

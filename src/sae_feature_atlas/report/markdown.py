@@ -110,7 +110,6 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
     cfg.run_reports_dir.mkdir(parents=True, exist_ok=True)
 
     cards = _read(cfg.feature_cards_path)
-    feature_stats = _read(cfg.feature_stats_path)
     coactivation = _read(cfg.coactivation_pairs_path)
     geometry = _read(cfg.geometry_vs_coactivation_path)
     bimodal = _read(cfg.bimodal_candidates_path)
@@ -155,7 +154,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "",
         *_value_counts_lines(cards, "primary_label"),
         "",
-        _markdown_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "n_token_activations", "n_texts", "p99_activation", "artifact_score", "semantic_score"], n=15),
+        _markdown_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "n_token_activations", "n_texts", "p99_activation", "artifact_score", "interpretability_triage_score"], n=15),
         "",
         "## 5. Same-token coactivation",
         "",
@@ -294,7 +293,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
   <ul>{checklist}</ul>
 
   <h2>Feature population</h2>
-  {_html_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "p99_activation", "artifact_score", "semantic_score", "bimodality_score"], n=16)}
+  {_html_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "p99_activation", "artifact_score", "interpretability_triage_score", "bimodality_score"], n=16)}
 
   <h2>Bimodal low/high activation-regime examples</h2>
   <p>These rows are designed for manual comparison of weak vs strong feature activation contexts.</p>
