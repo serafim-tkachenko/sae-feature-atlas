@@ -63,7 +63,7 @@ def build_basic_feature_cards(
     """Build the base feature-card table.
 
     Later steps add independent evidence channels: inspection, coactivation,
-    decoder geometry, activation regimes, residual coverage and graph alignment
+    decoder geometry, activation regimes, decoder/residual-PC alignment and graph alignment
     """
     rows: list[dict] = []
     for feature_id, group in top_examples.groupby("feature_id"):
@@ -358,10 +358,10 @@ def _merge_decoder_umap(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
     )
 
 
-def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
-    if not cfg.feature_coverage_profiles_path.exists():
+def _merge_pc_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
+    if not cfg.decoder_residual_pc_alignment_path.exists():
         return cards
-    coverage = pd.read_parquet(cfg.feature_coverage_profiles_path)
+    alignment = pd.read_parquet(cfg.decoder_residual_pc_alignment_path)
     columns = [
         "pc_mass_observed",
         "pc_mass_unobserved_tail",
@@ -373,10 +373,9 @@ def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
         "pc_mass_top_20",
         "pc_norm_mass_top_1",
         "pc_norm_mass_top_5",
-        "pc_norm_mass_top_20",
-        "coverage_bucket",
+        "decoder_residual_pc_alignment_bucket",
     ]
-    return _merge_replace(cards, coverage, on="feature_id", columns_to_replace=columns)
+    return _merge_replace(cards, alignment, on="feature_id", columns_to_replace=columns)
 
 
 def _merge_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
@@ -404,7 +403,7 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
     cards = _merge_coactivation(cards, cfg)
     cards = _merge_decoder_pca(cards, cfg)
     cards = _merge_decoder_umap(cards, cfg)
-    cards = _merge_coverage(cards, cfg)
+    cards = _merge_pc_alignment(cards, cfg)
     cards = _merge_alignment(cards, cfg)
 
     cards = assign_feature_labels(cards)
@@ -417,7 +416,6 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "artifact_score",
         "interpretability_triage_score",
         "graph_agreement_score",
-        "coverage_coherence_score",
         "n_token_activations",
         "n_texts",
         "token_frequency",
@@ -435,10 +433,9 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "gca_at_10",
         "gca_at_20",
         "graph_alignment_bucket",
-        "pc_norm_mass_top_20",
-        "effective_pc_dim",
+                "effective_pc_dim",
         "pc_entropy",
-        "coverage_bucket",
+        "decoder_residual_pc_alignment_bucket",
         "decoder_pc1",
         "decoder_pc2",
         "decoder_umap_x",

@@ -39,7 +39,7 @@ def _effective_dimension(probabilities: np.ndarray) -> float:
     return float(1.0 / denom)
 
 
-def _coverage_bucket(
+def _alignment_bucket(
     *,
     observed_mass: float,
     norm_top1: float,
@@ -48,7 +48,7 @@ def _coverage_bucket(
     center_of_mass: float,
     n_components: int,
 ) -> str:
-    """Assign a human-readable residual-coverage bucket.
+    """Assign a human-readable decoder/residual-PC alignment bucket.
 
     Important distinction:
     - `observed_mass` is absolute squared norm captured by the sampled residual
@@ -80,14 +80,14 @@ def _coverage_bucket(
     return "mid_variance_aligned"
 
 
-def compute_feature_coverage_profiles(
+def compute_decoder_residual_pc_alignment(
     sae,
     residual_vectors_path: Path,
     feature_ids: Iterable[int],
     n_components: int = 64,
     top_components: tuple[int, ...] = (1, 5, 20),
 ) -> pd.DataFrame:
-    """Measure how SAE decoder directions sit in residual activation PCA space.
+    """Diagnose how decoder directions align with a sampled residual-PC subspace.
 
     For a normalized SAE decoder direction d_i and residual PCA component v_k,
     the basic quantity is
@@ -161,11 +161,14 @@ def compute_feature_coverage_profiles(
         for k in top_components:
             kk = min(int(k), n)
             item[f"pc_mass_top_{k}"] = float(raw[:kk].sum())
-            item[f"pc_norm_mass_top_{k}"] = float(norm[:kk].sum())
+            # A normalized sum over the entire fitted basis is identically one,
+            # so omit it rather than exposing a meaningless ranking field.
+            if kk < n:
+                item[f"pc_norm_mass_top_{k}"] = float(norm[:kk].sum())
 
         norm_top1 = float(item.get("pc_norm_mass_top_1", 0.0))
         norm_top5 = float(item.get("pc_norm_mass_top_5", norm_top1))
-        item["coverage_bucket"] = _coverage_bucket(
+        item["decoder_residual_pc_alignment_bucket"] = _alignment_bucket(
             observed_mass=observed,
             norm_top1=norm_top1,
             norm_top5=norm_top5,
@@ -176,3 +179,9 @@ def compute_feature_coverage_profiles(
         rows.append(item)
 
     return pd.DataFrame(rows)
+
+
+
+# Backward-compatible function alias. New artifacts and reports use alignment
+# terminology because this diagnostic is not SAE reconstruction coverage.
+compute_feature_coverage_profiles = compute_decoder_residual_pc_alignment

@@ -9,7 +9,7 @@ from sae_feature_atlas.analysis.bimodality import compute_bimodality
 from sae_feature_atlas.inspection.activation_regimes import build_bimodal_peak_examples
 from sae_feature_atlas.analysis.coactivation import compute_same_token_coactivation
 from sae_feature_atlas.config.schema import ExperimentConfig
-from sae_feature_atlas.analysis.coverage import compute_feature_coverage_profiles
+from sae_feature_atlas.analysis.coverage import compute_decoder_residual_pc_alignment
 from sae_feature_atlas.config.datasets import (
     build_text_dataset,
     build_token_metadata,
@@ -283,27 +283,27 @@ def run_space(cfg: ExperimentConfig) -> dict:
 
 
 def run_coverage(cfg: ExperimentConfig) -> dict:
-    """Research-grade coverage: decoder directions vs residual PCA components."""
+    """Diagnostic decoder-direction alignment with sampled residual PCs."""
     sae = load_sae(cfg, get_device())
-    filtered = pd.read_parquet(cfg.filtered_features_path)
-    coverage = compute_feature_coverage_profiles(
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
+    alignment = compute_decoder_residual_pc_alignment(
         sae=sae,
         residual_vectors_path=cfg.residual_vectors_path,
-        feature_ids=filtered["feature_id"].astype(int).tolist(),
+        feature_ids=analysis_features["feature_id"].astype(int).tolist(),
         n_components=cfg.analysis.pca_components,
-        top_components=cfg.analysis.coverage_top_components,
+        top_components=cfg.analysis.pc_alignment_top_components,
     )
-    coverage.to_parquet(cfg.feature_coverage_profiles_path, index=False)
-    return {"feature_coverage_rows": int(len(coverage))}
+    alignment.to_parquet(cfg.decoder_residual_pc_alignment_path, index=False)
+    return {"decoder_residual_pc_alignment_rows": int(len(alignment))}
 
 
 def run_alignment(cfg: ExperimentConfig) -> dict:
     """Research-grade graph alignment between decoder geometry and coactivation."""
-    filtered = pd.read_parquet(cfg.filtered_features_path)
+    analysis_features = pd.read_parquet(cfg.analysis_features_path)
     alignment, summary = compute_graph_alignment(
         decoder_neighbors=pd.read_parquet(cfg.decoder_neighbors_path),
         coactivation_pairs=pd.read_parquet(cfg.coactivation_pairs_path),
-        feature_ids=filtered["feature_id"].astype(int).tolist(),
+        feature_ids=analysis_features["feature_id"].astype(int).tolist(),
         k_values=cfg.analysis.graph_alignment_k_values,
     )
     alignment.to_parquet(cfg.graph_alignment_path, index=False)

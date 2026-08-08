@@ -86,8 +86,8 @@ def _analysis_checklist(cfg: ExperimentConfig) -> list[str]:
         ("2", "Coactivation", cfg.coactivation_pairs_path, "Same-token feature coactivation pairs are computed."),
         ("3", "Bimodal activation regimes", cfg.bimodal_peak_examples_path, "Low/high activation-regime examples are available for ranked features."),
         ("4", "Decoder geometry vs coactivation", cfg.geometry_vs_coactivation_path, "Nearest decoder directions are compared with empirical coactivation."),
-        ("5", "Decoder directions vs residual PCA", cfg.feature_coverage_profiles_path, "SAE decoder directions are projected onto sampled residual PCA components."),
-        ("6", "Decoder direction PC spread", cfg.feature_coverage_profiles_path, "Effective PC dimension / entropy describe how spread decoder directions are.")]
+        ("5", "Decoder directions vs residual PCA", cfg.decoder_residual_pc_alignment_path, "SAE decoder directions are projected onto sampled residual PCA components."),
+        ("6", "Decoder direction PC spread", cfg.decoder_residual_pc_alignment_path, "Effective PC dimension / entropy describe how spread decoder directions are.")]
     lines = []
     for idx, title, path, note in checks:
         status = "done" if path.exists() else "missing"
@@ -114,7 +114,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
     geometry = _read(cfg.geometry_vs_coactivation_path)
     bimodal = _read(cfg.bimodal_candidates_path)
     regimes = _read(cfg.bimodal_peak_examples_path)
-    coverage = _read(cfg.feature_coverage_profiles_path)
+    pc_alignment = _read(cfg.decoder_residual_pc_alignment_path)
     alignment = _read(cfg.graph_alignment_path)
 
     top_bimodal = bimodal.sort_values("bimodality_score", ascending=False) if "bimodality_score" in bimodal.columns else bimodal
@@ -185,17 +185,17 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "",
         _markdown_table(geometry, ["feature_i", "feature_j", "decoder_cosine", "jaccard", "pmi", "geometry_coactivation_quadrant"], n=15),
         "",
-        "## 8. Residual PCA coverage",
+        "## 8. Decoder/residual-PC alignment diagnostic",
         "",
-        "Residual activations are original model residual-stream vectors. PCA coordinates are a diagnostic basis fitted on sampled residual vectors. Decoder coverage asks where SAE decoder directions lie relative to that PCA basis.",
+        "Residual activations are original model residual-stream vectors. PCA coordinates are a diagnostic basis fitted on sampled residual vectors. This diagnostic asks how decoder directions align with that sampled basis; it does not measure SAE reconstruction quality or semantic importance.",
         "",
-        f"- Coverage profiles: `{_shape(cfg.feature_coverage_profiles_path)}`",
+        f"- Alignment profiles: `{_shape(cfg.decoder_residual_pc_alignment_path)}`",
         "",
-        "Coverage buckets:",
+        "Alignment buckets:",
         "",
-        *_value_counts_lines(coverage, "coverage_bucket"),
+        *_value_counts_lines(pc_alignment, "decoder_residual_pc_alignment_bucket"),
         "",
-        _markdown_table(coverage, ["feature_id", "pc_mass_observed", "pc_mass_unobserved_tail", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_1", "pc_norm_mass_top_5", "pc_norm_mass_top_20", "coverage_bucket"], n=15),
+        _markdown_table(pc_alignment, ["feature_id", "pc_mass_observed", "pc_mass_unobserved_tail", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_1", "pc_norm_mass_top_5", "decoder_residual_pc_alignment_bucket"], n=15),
         "",
         "## 9. Graph alignment",
         "",
@@ -213,7 +213,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "- In `topk` mode, feature frequency means occurrence among stored top-k activations, not true positive activation frequency.",
         "- Bimodality is a statistical statistical signal; low/high examples require manual interpretation.",
         "- Decoder cosine does not prove semantic similarity or causal interaction.",
-        "- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.",
+        "- Decoder/residual-PC alignment diagnostic depends on sampled corpus, layer, and number of PCA components.",
         "",
         "## 11. Metric glossary",
         "",
@@ -251,7 +251,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
 
     cards = _read(cfg.feature_cards_path)
     regimes = _read(cfg.bimodal_peak_examples_path)
-    coverage = _read(cfg.feature_coverage_profiles_path)
+    pc_alignment = _read(cfg.decoder_residual_pc_alignment_path)
 
     plot_links = "".join(
         f'<li><a href="{escape(_relative(cfg.run_reports_dir, path))}">{escape(name)}</a></li>'
@@ -299,8 +299,8 @@ def write_html_report(cfg: ExperimentConfig) -> None:
   <p>These rows are designed for manual comparison of weak vs strong feature activation contexts.</p>
   {_html_table(regimes, ["feature_id", "peak_label", "activation", "source", "text_id", "token_pos", "left_context", "center_token", "right_context"], n=16)}
 
-  <h2>Residual PCA coverage</h2>
-  {_html_table(coverage, ["feature_id", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_20", "coverage_bucket"], n=16)}
+  <h2>Decoder/residual-PC alignment diagnostic</h2>
+  {_html_table(pc_alignment, ["feature_id", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "decoder_residual_pc_alignment_bucket"], n=16)}
 
   <h2>Generated plots</h2>
   <ul>{plot_links or '<li>No plots generated.</li>'}</ul>

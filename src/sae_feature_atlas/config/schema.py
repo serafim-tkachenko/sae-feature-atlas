@@ -99,7 +99,7 @@ class AnalysisConfig:
     umap_metric: str = "cosine"
     umap_random_state: int = 42
     # Research-grade geometry extensions.
-    coverage_top_components: tuple[int, ...] = (1, 5, 20)
+    pc_alignment_top_components: tuple[int, ...] = (1, 5, 20)
     graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
 
 

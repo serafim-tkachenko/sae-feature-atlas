@@ -74,8 +74,12 @@ class AtlasRun:
     def bimodal_peak_examples(self) -> pd.DataFrame:
         return self._parquet("bimodal_peak_examples.parquet")
 
+    def decoder_residual_pc_alignment(self) -> pd.DataFrame:
+        return self._parquet("decoder_residual_pc_alignment.parquet")
+
     def coverage_profiles(self) -> pd.DataFrame:
-        return self._parquet("feature_coverage_profiles.parquet")
+        """Compatibility alias for the renamed diagnostic artifact."""
+        return self.decoder_residual_pc_alignment()
 
     def graph_alignment(self) -> pd.DataFrame:
         return self._parquet("feature_graph_alignment.parquet")
@@ -112,7 +116,7 @@ class AtlasRun:
             "geometry_vs_coactivation.parquet",
             "bimodal_feature_candidates.parquet",
             "bimodal_peak_examples.parquet",
-            "feature_coverage_profiles.parquet",
+            "decoder_residual_pc_alignment.parquet",
             "feature_cards.parquet"]
         rows = []
         for name in names:
