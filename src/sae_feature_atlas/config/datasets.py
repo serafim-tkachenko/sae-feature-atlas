@@ -118,7 +118,7 @@ CORPUS_REGISTRY: dict[str, CorpusDescriptor] = {
         domains=("general", "web", "encyclopedic", "stories", "code", "math"),
         size="medium-large",
         streaming=True,
-        notes="Manual math/code rows are qualitative probes, not representative 5% slices. Inspect saved source summaries before making corpus-level claims.",
+        notes="Document allocations are sampling targets, not token quotas; realized token shares are corpus-specific. Manual math/code rows are qualitative probes, not representative 5% slices. Inspect saved source summaries before making corpus-level claims.",
     ),
     "mixed-large": CorpusDescriptor(
         name="mixed-large",
