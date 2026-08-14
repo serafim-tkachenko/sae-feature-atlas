@@ -158,6 +158,7 @@ class ExperimentConfig:
 
     @property
     def filtered_features_path(self) -> Path:
+        """Compatibility alias; new code should name analysis features."""
         return self.analysis_features_path
 
     @property
@@ -218,6 +219,7 @@ class ExperimentConfig:
 
     @property
     def feature_coverage_profiles_path(self) -> Path:
+        """Compatibility alias for the renamed alignment diagnostic."""
         return self.decoder_residual_pc_alignment_path
 
     @property

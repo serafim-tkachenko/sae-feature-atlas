@@ -381,7 +381,7 @@ def run_inspection(cfg: ExperimentConfig) -> dict:
     return {
         "inspection_features": len(feature_summaries),
         "inspection_pairs": len(pair_summaries),
-        "inspection_scope": "all_filtered_features",
+        "inspection_scope": "all_analysis_features",
     }
 
 

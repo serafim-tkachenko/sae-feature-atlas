@@ -60,9 +60,9 @@ def build_bimodal_peak_examples(
 ) -> pd.DataFrame:
     """Build low/high activation-regime examples for ranked bimodal features.
 
-    The output addresses the analysis question behind bimodality: not only
-    whether a feature has two activation-strength modes, but which token contexts
-    belong to the low and high modes.
+    The output supplies representative, posterior-confident context evidence
+    for qualified statistical candidates. It does not establish two semantic
+    concepts or final regime membership.
     """
     if acts.empty or candidates.empty:
         return pd.DataFrame()

@@ -56,7 +56,7 @@ def _merge_replace(
 
 
 def build_basic_feature_cards(
-    filtered_features: pd.DataFrame,
+    analysis_features: pd.DataFrame,
     top_examples: pd.DataFrame,
     cfg: ExperimentConfig,
 ) -> pd.DataFrame:
@@ -70,7 +70,7 @@ def build_basic_feature_cards(
         rows.append({"feature_id": int(feature_id), "top_examples_json": _top_examples_json(group)})
 
     examples_df = pd.DataFrame(rows)
-    cards = filtered_features.merge(examples_df, on="feature_id", how="left")
+    cards = analysis_features.merge(examples_df, on="feature_id", how="left")
 
     cards["model_name"] = cfg.model.model_name
     cards["sae_release"] = cfg.model.sae_release
@@ -136,12 +136,12 @@ def build_and_save_feature_outputs(
 def _load_feature_cards_base(cfg: ExperimentConfig) -> pd.DataFrame:
     if cfg.feature_cards_path.exists():
         return pd.read_parquet(cfg.feature_cards_path)
-    if not cfg.filtered_features_path.exists():
+    if not cfg.analysis_features_path.exists():
         raise FileNotFoundError(
-            f"Missing both {cfg.feature_cards_path} and {cfg.filtered_features_path}. "
+            f"Missing both {cfg.feature_cards_path} and {cfg.analysis_features_path}. "
             "Run the `features` step first."
         )
-    cards = pd.read_parquet(cfg.filtered_features_path)
+    cards = pd.read_parquet(cfg.analysis_features_path)
     cards["model_name"] = cfg.model.model_name
     cards["sae_release"] = cfg.model.sae_release
     cards["sae_id"] = cfg.model.sae_id
@@ -193,8 +193,23 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
         keep = [
             "feature_id",
             "bimodality_score",
+            "delta_bic",
+            "bic_1",
+            "bic_2",
+            "component_weight_low",
+            "component_weight_high",
+            "minimum_component_weight",
+            "mode_separation",
+            "converged",
+            "n_iter_1",
+            "n_iter_2",
+            "gmm_random_seed",
+            "gmm_n_init",
+            "rank_censored",
             "log_mean_low",
             "log_mean_high",
+            "log_variance_low",
+            "log_variance_high",
             "activation_min",
             "activation_p50",
             "activation_p95",
@@ -416,6 +431,16 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "artifact_score",
         "interpretability_triage_score",
         "graph_agreement_score",
+        "stored_activation_count",
+        "analysis_activation_count",
+        "stored_text_count",
+        "analysis_text_count",
+        "stored_token_frequency",
+        "analysis_token_frequency",
+        "analysis_to_stored_support_ratio",
+        "stored_token_denominator",
+        "analysis_token_denominator",
+        "stored_frequency_semantics",
         "n_token_activations",
         "n_texts",
         "token_frequency",
