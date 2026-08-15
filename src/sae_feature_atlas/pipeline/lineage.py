@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import asdict
 from pathlib import Path
 
+from sae_feature_atlas.analysis import token_quality
 from sae_feature_atlas.config.schema import ExperimentConfig
 from sae_feature_atlas.util.io import write_json
 
@@ -22,6 +23,12 @@ def _fingerprint(payload: dict) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def token_quality_policy_digest() -> str:
+    """Hash the classifier implementation as part of analysis population identity."""
+    module_path = Path(token_quality.__file__)
+    return hashlib.sha256(module_path.read_bytes()).hexdigest()
+
+
 def collection_fingerprint_payload(cfg: ExperimentConfig) -> dict:
     return {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
@@ -33,6 +40,7 @@ def collection_fingerprint_payload(cfg: ExperimentConfig) -> dict:
 def analysis_fingerprint_payload(cfg: ExperimentConfig) -> dict:
     return {
         "collection_fingerprint": _fingerprint(collection_fingerprint_payload(cfg)),
+        "token_quality_policy_digest": token_quality_policy_digest(),
         "activation_row_filter": asdict(cfg.activation_filter),
         "feature_filter": asdict(cfg.feature_filter),
         "analysis": asdict(cfg.analysis),
