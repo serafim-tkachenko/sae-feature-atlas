@@ -1,21 +1,16 @@
 # Notebook usage
 
-Use `AtlasRun` to load generated artifacts in notebooks:
-
 ```python
 from sae_feature_atlas.storage.run import AtlasRun
 
 run = AtlasRun.from_dir("data/processed/<run_name>")
+stored = run.sae_activations()
+analysis_features = run.analysis_features()
 cards = run.feature_cards()
 coactivation = run.coactivation_pairs()
-bimodal = run.bimodal_candidates()
-coverage = run.coverage_profiles()
+evaluated = run.bimodality_evaluated()
+candidates = run.bimodal_candidates()
+pc_alignment = run.decoder_residual_pc_alignment()
 ```
 
-Useful first checks:
-
-1. Preview `run.artifact_status()`.
-2. Sort feature cards by `manual_priority`, `artifact_score`, or `bimodality_score`.
-3. Inspect top examples for a feature with `run.feature_examples(feature_id)`.
-4. Compare decoder-neighbor and coactivation-neighbor behavior.
-5. Check coverage buckets and graph-alignment buckets.
+Start with `run.artifact_status()`. Interpret stored activations according to the collection mode, use analysis features/contexts for human-facing inspection, and treat PCA/UMAP/alignment outputs as diagnostics. The legacy `run.coverage_profiles()` method is an explicit compatibility alias for `run.decoder_residual_pc_alignment()`.

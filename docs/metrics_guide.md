@@ -2,42 +2,33 @@
 
 ## Feature statistics
 
-`token_frequency` is the share of token positions where a feature appears in the
-saved activation table. In `topk` mode this means frequency among saved top-k
-rows, not true positive activation frequency.
+- `stored_activation_count`: persisted rows for the feature.
+- `analysis_activation_count`: stored rows that pass analysis eligibility.
+- `stored_token_frequency`: stored count divided by every collected token.
+- `analysis_token_frequency`: analysis count divided by every eligible token.
+- `analysis_to_stored_support_ratio`: analysis support divided by stored support.
+- activation quantiles: computed on analysis activations.
 
-`p99_activation` is a high-percentile activation-strength summary.
+Under top-k collection, stored frequency means retained top-k membership per collected token. It is not true-positive activation frequency.
 
 ## Coactivation
 
-`coactivation_count` counts same-token occurrences of a feature pair.
-
-`jaccard` normalizes overlap by union count.
-
-`pmi` is pointwise mutual information. It can be noisy for rare pairs.
+`coactivation_count`, Jaccard, PMI, `P(j|i)`, and `P(i|j)` share the same eligible-token universe and unique token-feature representation. PMI remains sensitive to low support, so pairs below the configured support threshold are not estimated. Absence from the saved table may mean unsupported, ineligible, or not retained by the storage guard; consult `coactivation_metadata.json`.
 
 ## Decoder geometry
 
-`decoder_cosine` is cosine similarity between normalized SAE decoder directions.
-It is a geometric signal, not semantic proof.
+`decoder_cosine` is descriptive cosine similarity between normalized decoder directions. Canonical pair keys allow an empirical pair `(i,j)` to match directed geometry edges in either orientation. Missing coactivation metrics remain null.
 
 ## Bimodality
 
-`bimodality_score` is the BIC improvement of a two-component activation-strength
-model over a one-component model. Higher values suggest the feature may have
-weak/high activation regimes worth inspecting manually.
+`delta_bic` compares one- and two-component Gaussian fits on log activation. Candidate qualification additionally requires component-weight and separation thresholds. Evaluated rows record point count, both BICs, weights, ordered means, variances/stds, convergence, iterations, seed, `n_init`, fit status, and rank-censoring semantics.
 
-## Coverage
+## Decoder/residual-PC alignment diagnostic
 
-`pc_norm_mass_top_k` describes how much of a decoder direction's sampled PCA mass
-lies in the first `k` residual PCA components.
+`pc_mass_observed` is absolute squared decoder-direction projection into the sampled fitted residual-PC subspace. `pc_norm_mass_top_k` describes where that observed mass lies within a proper prefix of the fitted basis. `effective_pc_dim`, entropy, and center of mass describe its spread.
 
-`effective_pc_dim` is a participation-ratio style measure of spread across PCA
-components.
-
-`coverage_bucket` is a coarse triage bucket derived from coverage metrics.
+A normalized mass over all fitted PCs is identically one and is not emitted. These quantities do not measure reconstruction quality, reconstructed residual variance, semantic importance, or full dictionary coverage.
 
 ## Graph alignment
 
-`gca_at_k` measures overlap between top-k decoder-neighbor features and top-k
-coactivation-neighbor features.
+`gca_at_k` is exploratory overlap between retained decoder-neighbor and coactivation-neighbor sets. It inherits both graphs' support and retention policies.
