@@ -53,6 +53,9 @@ class AtlasRun:
     def feature_stats(self) -> pd.DataFrame:
         return self._parquet("feature_stats.parquet")
 
+    def analysis_features(self) -> pd.DataFrame:
+        return self._parquet("analysis_features.parquet")
+
     def feature_cards(self) -> pd.DataFrame:
         return self._parquet("feature_cards.parquet")
 
@@ -61,6 +64,9 @@ class AtlasRun:
 
     def coactivation_pairs(self) -> pd.DataFrame:
         return self._parquet("coactivation_pairs.parquet")
+
+    def bimodality_evaluated(self) -> pd.DataFrame:
+        return self._parquet("bimodality_evaluated_features.parquet")
 
     def decoder_neighbors(self) -> pd.DataFrame:
         return self._parquet("decoder_neighbors.parquet")
@@ -74,8 +80,12 @@ class AtlasRun:
     def bimodal_peak_examples(self) -> pd.DataFrame:
         return self._parquet("bimodal_peak_examples.parquet")
 
+    def decoder_residual_pc_alignment(self) -> pd.DataFrame:
+        return self._parquet("decoder_residual_pc_alignment.parquet")
+
     def coverage_profiles(self) -> pd.DataFrame:
-        return self._parquet("feature_coverage_profiles.parquet")
+        """Compatibility alias for the renamed diagnostic artifact."""
+        return self.decoder_residual_pc_alignment()
 
     def graph_alignment(self) -> pd.DataFrame:
         return self._parquet("feature_graph_alignment.parquet")
@@ -100,20 +110,28 @@ class AtlasRun:
 
     def artifact_status(self) -> pd.DataFrame:
         names = [
+            "source_texts.jsonl",
             "token_metadata.parquet",
             "sae_activations_topk.parquet",
             "sae_activations_positive.parquet",
+            "token_activation_summary.parquet",
             "residual_vectors_sample.npy",
+            "residual_vectors_metadata.parquet",
             "feature_stats.parquet",
-            "filtered_features.parquet",
+            "analysis_features.parquet",
             "top_feature_examples.parquet",
             "coactivation_pairs.parquet",
+            "coactivation_metadata.json",
             "decoder_neighbors.parquet",
             "geometry_vs_coactivation.parquet",
+            "bimodality_evaluated_features.parquet",
             "bimodal_feature_candidates.parquet",
             "bimodal_peak_examples.parquet",
-            "feature_coverage_profiles.parquet",
-            "feature_cards.parquet"]
+            "decoder_residual_pc_alignment.parquet",
+            "feature_graph_alignment.parquet",
+            "graph_alignment_summary.parquet",
+            "feature_cards.parquet",
+            "lineage.json"]
         rows = []
         for name in names:
             path = self.path / name

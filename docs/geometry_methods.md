@@ -1,20 +1,15 @@
 # Geometry methods
 
-The geometry part of the project uses unsupervised diagnostics only.
+## Decoder neighbors
 
-## Decoder PCA
+Nearest neighbors use cosine similarity between normalized SAE decoder directions. The empirical comparison uses exactly the analysis-feature universe on both source and target sides. Decoder edges retain direction and rank.
 
-PCA over normalized SAE decoder vectors. Useful for checking global anisotropy
-and broad structure in decoder space.
+## Geometry/coactivation comparison
 
-## Decoder UMAP
+Coactivation identity is unordered, so `(i,j)` and `(j,i)` share a canonical pair key. An unmatched directed geometry edge is marked missing rather than assigned zero coactivation. This matters when pairs are unsupported, ineligible, or absent because of storage retention.
 
-UMAP over normalized SAE decoder vectors. Useful for visualization and manual
-triage. UMAP plots can be colored by artifact score, bimodality score, or manual
-priority, but the embedding itself is not evidence of semantic clusters.
+## Exploratory projections
 
-## Decoder-neighbor geometry
+Decoder PCA and decoder UMAP are unsupervised diagnostics for anisotropy, visualization, and hypothesis generation. A visible cluster is not evidence of a semantic category.
 
-Nearest-neighbor search by decoder cosine similarity. This is compared with
-same-token coactivation to identify where geometric closeness agrees or disagrees
-with empirical usage overlap.
+Decoder/residual-PC alignment measures squared projection of decoder directions into a sampled residual PCA basis. It does not measure SAE reconstruction, reconstructed residual variance, feature importance, or full activation-space coverage.

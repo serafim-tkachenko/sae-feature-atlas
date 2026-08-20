@@ -57,59 +57,134 @@ def _exists(path: Path) -> str:
 
 
 def _step_artifacts(cfg: ExperimentConfig) -> dict[str, dict[str, list[Path]]]:
+    lineage = [cfg.lineage_path]
     return {
         "collect": {
             "inputs": [],
             "outputs": [
+                cfg.source_texts_path,
                 cfg.token_metadata_path,
                 cfg.sae_activations_path,
                 cfg.token_activation_summary_path,
                 cfg.residual_vectors_path,
                 cfg.residual_metadata_path,
+                cfg.lineage_path,
             ],
         },
         "features": {
-            "inputs": [cfg.sae_activations_path, cfg.token_metadata_path],
-            "outputs": [cfg.feature_stats_path, cfg.filtered_features_path, cfg.top_examples_path, cfg.feature_cards_path],
+            "inputs": [cfg.sae_activations_path, cfg.token_metadata_path, *lineage],
+            "outputs": [
+                cfg.feature_stats_path,
+                cfg.analysis_features_path,
+                cfg.top_examples_path,
+                cfg.feature_cards_path,
+            ],
         },
         "coactivation": {
-            "inputs": [cfg.sae_activations_path, cfg.filtered_features_path],
-            "outputs": [cfg.coactivation_pairs_path],
+            "inputs": [
+                cfg.sae_activations_path,
+                cfg.token_metadata_path,
+                cfg.analysis_features_path,
+                *lineage,
+            ],
+            "outputs": [cfg.coactivation_pairs_path, cfg.coactivation_metadata_path],
         },
         "geometry": {
-            "inputs": [cfg.filtered_features_path],
+            "inputs": [cfg.analysis_features_path, *lineage],
             "outputs": [cfg.decoder_neighbors_path],
         },
         "geometry-vs-coactivation": {
-            "inputs": [cfg.decoder_neighbors_path, cfg.coactivation_pairs_path],
+            "inputs": [
+                cfg.decoder_neighbors_path,
+                cfg.coactivation_pairs_path,
+                cfg.analysis_features_path,
+                *lineage,
+            ],
             "outputs": [cfg.geometry_vs_coactivation_path],
         },
         "bimodality": {
-            "inputs": [cfg.sae_activations_path, cfg.token_metadata_path],
-            "outputs": [cfg.bimodal_candidates_path, cfg.bimodal_peak_examples_path],
+            "inputs": [
+                cfg.sae_activations_path,
+                cfg.token_metadata_path,
+                cfg.analysis_features_path,
+                *lineage,
+            ],
+            "outputs": [
+                cfg.bimodality_evaluated_path,
+                cfg.bimodal_candidates_path,
+                cfg.bimodal_peak_examples_path,
+            ],
         },
         "inspection": {
-            "inputs": [cfg.sae_activations_path, cfg.top_examples_path, cfg.filtered_features_path],
-            "outputs": [cfg.inspection_feature_summaries_path, cfg.inspection_pair_summaries_path, cfg.inspection_report_md_path],
+            "inputs": [
+                cfg.sae_activations_path,
+                cfg.token_metadata_path,
+                cfg.top_examples_path,
+                cfg.analysis_features_path,
+                cfg.coactivation_pairs_path,
+                *lineage,
+            ],
+            "outputs": [
+                cfg.inspection_feature_summaries_path,
+                cfg.inspection_pair_summaries_path,
+                cfg.inspection_report_md_path,
+            ],
         },
         "space": {
-            "inputs": [cfg.residual_vectors_path, cfg.feature_stats_path],
-            "outputs": [cfg.residual_pca_summary_path, cfg.decoder_pca_summary_path, cfg.decoder_feature_pca_path, cfg.decoder_feature_umap_path],
+            "inputs": [cfg.residual_vectors_path, cfg.feature_stats_path, *lineage],
+            "outputs": [
+                cfg.residual_pca_summary_path,
+                cfg.decoder_pca_summary_path,
+                cfg.decoder_feature_pca_path,
+                cfg.decoder_feature_umap_path,
+            ],
         },
         "coverage": {
-            "inputs": [cfg.residual_vectors_path, cfg.filtered_features_path],
-            "outputs": [cfg.feature_coverage_profiles_path],
+            "inputs": [
+                cfg.residual_vectors_path,
+                cfg.analysis_features_path,
+                *lineage,
+            ],
+            "outputs": [cfg.decoder_residual_pc_alignment_path],
         },
         "alignment": {
-            "inputs": [cfg.decoder_neighbors_path, cfg.coactivation_pairs_path, cfg.filtered_features_path],
+            "inputs": [
+                cfg.decoder_neighbors_path,
+                cfg.coactivation_pairs_path,
+                cfg.analysis_features_path,
+                *lineage,
+            ],
             "outputs": [cfg.graph_alignment_path, cfg.graph_alignment_summary_path],
         },
         "cards": {
-            "inputs": [cfg.filtered_features_path],
+            "inputs": [
+                cfg.analysis_features_path,
+                cfg.top_examples_path,
+                cfg.inspection_feature_summaries_path,
+                cfg.bimodal_candidates_path,
+                cfg.bimodal_peak_examples_path,
+                cfg.decoder_neighbors_path,
+                cfg.coactivation_pairs_path,
+                cfg.decoder_feature_pca_path,
+                cfg.decoder_feature_umap_path,
+                cfg.decoder_residual_pc_alignment_path,
+                cfg.graph_alignment_path,
+                *lineage,
+            ],
             "outputs": [cfg.feature_cards_path],
         },
         "report": {
-            "inputs": [cfg.feature_cards_path],
+            "inputs": [
+                cfg.feature_cards_path,
+                cfg.feature_stats_path,
+                cfg.coactivation_pairs_path,
+                cfg.geometry_vs_coactivation_path,
+                cfg.bimodal_candidates_path,
+                cfg.bimodal_peak_examples_path,
+                cfg.decoder_residual_pc_alignment_path,
+                cfg.graph_alignment_path,
+                *lineage,
+            ],
             "outputs": [cfg.summary_md_path, cfg.html_report_path],
         },
     }
@@ -147,14 +222,14 @@ def _plan_artifact_status(cfg: ExperimentConfig, steps: list[str]) -> list[dict[
 def _analysis_checklist(steps: list[str]) -> dict[str, bool]:
     return {
         "activation dataset": "collect" in steps,
-        "feature filtering and top examples": "features" in steps,
+        "analysis-feature selection and decoded examples": "features" in steps,
         "same-token coactivation": "coactivation" in steps,
         "decoder geometry": "geometry" in steps,
         "geometry vs coactivation": "geometry-vs-coactivation" in steps,
         "bimodal activation-regime examples": "bimodality" in steps,
         "automated inspection summaries": "inspection" in steps,
         "residual/decoder PCA and decoder UMAP": "space" in steps,
-        "decoder directions vs residual PCA coverage": "coverage" in steps,
+        "diagnostic decoder/residual-PC alignment": "coverage" in steps,
         "decoder-neighbor vs coactivation-neighbor alignment": "alignment" in steps,
         "feature cards": "cards" in steps,
         "markdown/html report": "report" in steps,

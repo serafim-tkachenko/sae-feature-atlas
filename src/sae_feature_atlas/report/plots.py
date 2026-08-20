@@ -227,22 +227,18 @@ def generate_plots(run_data_dir: Path, report_dir: Path) -> dict[str, str]:
                 _scatter_by_category(df, "decoder_umap_x", "decoder_umap_y", "manual_priority", "Decoder UMAP by manual priority", "UMAP-1", "UMAP-2", out)
                 add("decoder_umap_by_manual_priority", out)
 
-    p = run_data_dir / "feature_coverage_profiles.parquet"
+    p = run_data_dir / "decoder_residual_pc_alignment.parquet"
     if p.exists():
         df = pd.read_parquet(p)
         if not df.empty:
             if "effective_pc_dim" in df.columns:
-                out = plots_dir / "coverage_effective_pc_dim_hist.png"
+                out = plots_dir / "pc_alignment_effective_dim_hist.png"
                 _hist(df["effective_pc_dim"], "Effective residual-PC dimension per feature", "effective PC dimension", out)
-                add("coverage_effective_pc_dim_hist", out)
-            if "pc_norm_mass_top_20" in df.columns:
-                out = plots_dir / "coverage_top20_mass_hist.png"
-                _hist(df["pc_norm_mass_top_20"], "Normalized mass in top residual PCs", "top-20 normalized mass", out)
-                add("coverage_top20_mass_hist", out)
-            if "coverage_bucket" in df.columns:
-                out = plots_dir / "coverage_bucket_bar.png"
-                _bar(df["coverage_bucket"].value_counts(), "Coverage buckets", "features", out)
-                add("coverage_bucket_bar", out)
+                add("pc_alignment_effective_dim_hist", out)
+            if "decoder_residual_pc_alignment_bucket" in df.columns:
+                out = plots_dir / "pc_alignment_bucket_bar.png"
+                _bar(df["decoder_residual_pc_alignment_bucket"].value_counts(), "Decoder/residual-PC alignment buckets", "features", out)
+                add("pc_alignment_bucket_bar", out)
 
     p = run_data_dir / "feature_graph_alignment.parquet"
     if p.exists():
@@ -272,7 +268,7 @@ def generate_html_tables(run_data_dir: Path, report_dir: Path, n: int = 40) -> d
         "geometry_quadrants": ("geometry_vs_coactivation.parquet", ["decoder_cosine", "jaccard"], "Geometry/coactivation pair diagnostics"),
         "inspection_features": ("inspection_feature_summaries.parquet", ["manual_priority", "artifact_score"], "Automated inspection feature summaries"),
         "inspection_pairs": ("inspection_pair_summaries.parquet", ["pair_artifact_score"], "Automated inspection pair summaries"),
-        "coverage_profiles": ("feature_coverage_profiles.parquet", ["pc_norm_mass_top_20", "effective_pc_dim"], "Residual coverage profiles"),
+        "decoder_residual_pc_alignment": ("decoder_residual_pc_alignment.parquet", ["pc_mass_observed", "effective_pc_dim"], "Diagnostic decoder/residual-PC alignment"),
         "graph_alignment": ("feature_graph_alignment.parquet", ["gca_at_10"], "Feature graph-alignment metrics"),
     }
 

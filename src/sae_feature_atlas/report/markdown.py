@@ -82,12 +82,12 @@ def _artifact_line(label: str, path: Path, note: str) -> str:
 def _analysis_checklist(cfg: ExperimentConfig) -> list[str]:
     checks = [
         ("0", "Activation dataset", cfg.sae_activations_path, "SAE activations and token metadata are saved for notebook access."),
-        ("1", "Feature filtering", cfg.filtered_features_path, "Rare/over-common features are filtered before pair/geometry analysis."),
-        ("2", "Coactivation", cfg.coactivation_pairs_path, "Same-token feature coactivation pairs are computed."),
-        ("3", "Bimodal activation regimes", cfg.bimodal_peak_examples_path, "Low/high activation-regime examples are available for ranked features."),
+        ("1", "Analysis features", cfg.analysis_features_path, "Features meet explicit analysis-population support criteria."),
+        ("2", "Coactivation", cfg.coactivation_pairs_path, "Supported same-token retained-membership pairs use the eligible-token universe."),
+        ("3", "Qualified bimodality candidates", cfg.bimodal_peak_examples_path, "Representative low/high-component examples are available for qualified candidates."),
         ("4", "Decoder geometry vs coactivation", cfg.geometry_vs_coactivation_path, "Nearest decoder directions are compared with empirical coactivation."),
-        ("5", "Decoder directions vs residual PCA", cfg.feature_coverage_profiles_path, "SAE decoder directions are projected onto sampled residual PCA components."),
-        ("6", "Decoder direction PC spread", cfg.feature_coverage_profiles_path, "Effective PC dimension / entropy describe how spread decoder directions are.")]
+        ("5", "Decoder directions vs residual PCA", cfg.decoder_residual_pc_alignment_path, "SAE decoder directions are projected onto sampled residual PCA components."),
+        ("6", "Decoder direction PC spread", cfg.decoder_residual_pc_alignment_path, "Effective PC dimension / entropy describe how spread decoder directions are.")]
     lines = []
     for idx, title, path, note in checks:
         status = "done" if path.exists() else "missing"
@@ -110,12 +110,11 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
     cfg.run_reports_dir.mkdir(parents=True, exist_ok=True)
 
     cards = _read(cfg.feature_cards_path)
-    feature_stats = _read(cfg.feature_stats_path)
     coactivation = _read(cfg.coactivation_pairs_path)
     geometry = _read(cfg.geometry_vs_coactivation_path)
     bimodal = _read(cfg.bimodal_candidates_path)
     regimes = _read(cfg.bimodal_peak_examples_path)
-    coverage = _read(cfg.feature_coverage_profiles_path)
+    pc_alignment = _read(cfg.decoder_residual_pc_alignment_path)
     alignment = _read(cfg.graph_alignment_path)
 
     top_bimodal = bimodal.sort_values("bimodality_score", ascending=False) if "bimodality_score" in bimodal.columns else bimodal
@@ -123,7 +122,7 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
     lines: list[str] = [
         f"# SAE Feature Atlas report: `{cfg.collection.run_name}`",
         "",
-        "This report is organized around the analysis workflow: collect SAE activations, filter features, study coactivation, inspect bimodal activation regimes, compare decoder geometry with empirical coactivation, and relate SAE decoder directions to residual PCA structure.",
+        "This report is organized around the analysis workflow: collect SAE activations, select analysis features, study coactivation, inspect qualified bimodality candidates, compare decoder geometry with empirical coactivation, and relate SAE decoder directions to residual PCA structure.",
         "",
         "## 1. Run overview",
         "",
@@ -142,34 +141,35 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "## 3. Core activation dataset",
         "",
         _artifact_line("token metadata", cfg.token_metadata_path, "Token-level source/position metadata."),
-        _artifact_line("SAE activations", cfg.sae_activations_path, "Sparse SAE activation rows used by downstream analyses."),
-        _artifact_line("residual sample", cfg.residual_vectors_path, "Sampled residual vectors for PCA/coverage diagnostics."),
+        _artifact_line("stored SAE activations", cfg.sae_activations_path, "Every persisted sparse row; top-k mode is rank-censored retained membership."),
+        _artifact_line("residual sample", cfg.residual_vectors_path, "Sampled residual vectors for PCA and alignment diagnostics."),
         "",
-        "## 4. Feature filtering and population",
+        "## 4. Explicit feature populations",
         "",
         f"- Feature stats: `{_shape(cfg.feature_stats_path)}`",
-        f"- Filtered features: `{_shape(cfg.filtered_features_path)}`",
+        f"- Analysis features: `{_shape(cfg.analysis_features_path)}`",
         f"- Feature cards: `{_shape(cfg.feature_cards_path)}`",
         "",
         "Primary labels:",
         "",
         *_value_counts_lines(cards, "primary_label"),
         "",
-        _markdown_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "n_token_activations", "n_texts", "p99_activation", "artifact_score", "semantic_score"], n=15),
+        _markdown_table(cards, ["feature_id", "primary_label", "manual_priority", "stored_activation_count", "analysis_activation_count", "stored_token_frequency", "analysis_token_frequency", "p99_activation", "artifact_score", "interpretability_triage_score"], n=15),
         "",
         "## 5. Same-token coactivation",
         "",
-        "Coactivation is computed on the same token positions after activation-row and feature filters. It is empirical usage overlap, not causal evidence.",
+        "Under top-k storage, coactivation is joint retained feature membership on the same eligible token. Minimum support is enforced; missing pairs are not observed zeros.",
         "",
         f"- Coactivation pairs: `{_shape(cfg.coactivation_pairs_path)}`",
         "",
         _markdown_table(coactivation, ["feature_i", "feature_j", "coactivation_count", "jaccard", "pmi", "p_j_given_i", "p_i_given_j"], n=15),
         "",
-        "## 6. Bimodal activation regimes",
+        "## 6. Qualified bimodality candidates",
         "",
-        "This section addresses whether a feature has weak/high activation regimes and shows examples from both regimes for manual interpretation.",
+        "This section screens rank-censored activation magnitudes with explicit fit and component-quality thresholds. A qualified GMM fit does not prove two semantic concepts.",
         "",
-        f"- Bimodality-ranked features: `{_shape(cfg.bimodal_candidates_path)}`",
+        f"- Features evaluated: `{_shape(cfg.bimodality_evaluated_path)}`",
+        f"- Qualified candidates: `{_shape(cfg.bimodal_candidates_path)}`",
         f"- Low/high regime examples: `{_shape(cfg.bimodal_peak_examples_path)}`",
         "",
         _markdown_table(top_bimodal, ["feature_id", "n_points", "bimodality_score", "log_mean_low", "log_mean_high", "activation_p50", "activation_p95", "activation_max"], n=15),
@@ -184,23 +184,23 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "",
         f"- Geometry/coactivation pairs: `{_shape(cfg.geometry_vs_coactivation_path)}`",
         "",
-        _markdown_table(geometry, ["feature_i", "feature_j", "decoder_cosine", "jaccard", "pmi", "geometry_coactivation_quadrant"], n=15),
+        _markdown_table(geometry, ["feature_i", "feature_j", "decoder_cosine", "jaccard", "pmi", "quadrant"], n=15),
         "",
-        "## 8. Residual PCA coverage",
+        "## 8. Decoder/residual-PC alignment diagnostic",
         "",
-        "Residual activations are original model residual-stream vectors. PCA coordinates are a diagnostic basis fitted on sampled residual vectors. Decoder coverage asks where SAE decoder directions lie relative to that PCA basis.",
+        "Residual activations are original model residual-stream vectors. PCA coordinates are a diagnostic basis fitted on sampled residual vectors. This diagnostic asks how decoder directions align with that sampled basis; it does not measure SAE reconstruction quality or semantic importance.",
         "",
-        f"- Coverage profiles: `{_shape(cfg.feature_coverage_profiles_path)}`",
+        f"- Alignment profiles: `{_shape(cfg.decoder_residual_pc_alignment_path)}`",
         "",
-        "Coverage buckets:",
+        "Alignment buckets:",
         "",
-        *_value_counts_lines(coverage, "coverage_bucket"),
+        *_value_counts_lines(pc_alignment, "decoder_residual_pc_alignment_bucket"),
         "",
-        _markdown_table(coverage, ["feature_id", "pc_mass_observed", "pc_mass_unobserved_tail", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_1", "pc_norm_mass_top_5", "pc_norm_mass_top_20", "coverage_bucket"], n=15),
+        _markdown_table(pc_alignment, ["feature_id", "pc_mass_observed", "pc_mass_unobserved_tail", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_1", "pc_norm_mass_top_5", "decoder_residual_pc_alignment_bucket"], n=15),
         "",
         "## 9. Graph alignment",
         "",
-        "These are research-extension artifacts.",
+        "This is an exploratory comparison of two retained neighbor graphs and inherits both support policies.",
         "",
         "Graph-alignment buckets:",
         "",
@@ -212,9 +212,9 @@ def write_markdown_summary(cfg: ExperimentConfig) -> None:
         "- Feature cards are multi-evidence profiles, not final explanations.",
         "- Automated labels are heuristic triage, not ground-truth semantics.",
         "- In `topk` mode, feature frequency means occurrence among stored top-k activations, not true positive activation frequency.",
-        "- Bimodality is a statistical statistical signal; low/high examples require manual interpretation.",
+        "- GMM bimodality is a statistical screen on rank-censored observations, not proof of semantic regimes.",
         "- Decoder cosine does not prove semantic similarity or causal interaction.",
-        "- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.",
+        "- Decoder/residual-PC alignment diagnostic depends on sampled corpus, layer, and number of PCA components.",
         "",
         "## 11. Metric glossary",
         "",
@@ -252,7 +252,7 @@ def write_html_report(cfg: ExperimentConfig) -> None:
 
     cards = _read(cfg.feature_cards_path)
     regimes = _read(cfg.bimodal_peak_examples_path)
-    coverage = _read(cfg.feature_coverage_profiles_path)
+    pc_alignment = _read(cfg.decoder_residual_pc_alignment_path)
 
     plot_links = "".join(
         f'<li><a href="{escape(_relative(cfg.run_reports_dir, path))}">{escape(name)}</a></li>'
@@ -294,14 +294,14 @@ def write_html_report(cfg: ExperimentConfig) -> None:
   <ul>{checklist}</ul>
 
   <h2>Feature population</h2>
-  {_html_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "p99_activation", "artifact_score", "semantic_score", "bimodality_score"], n=16)}
+  {_html_table(cards, ["feature_id", "primary_label", "manual_priority", "token_frequency", "p99_activation", "artifact_score", "interpretability_triage_score", "bimodality_score"], n=16)}
 
   <h2>Bimodal low/high activation-regime examples</h2>
   <p>These rows are designed for manual comparison of weak vs strong feature activation contexts.</p>
   {_html_table(regimes, ["feature_id", "peak_label", "activation", "source", "text_id", "token_pos", "left_context", "center_token", "right_context"], n=16)}
 
-  <h2>Residual PCA coverage</h2>
-  {_html_table(coverage, ["feature_id", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "pc_norm_mass_top_20", "coverage_bucket"], n=16)}
+  <h2>Decoder/residual-PC alignment diagnostic</h2>
+  {_html_table(pc_alignment, ["feature_id", "effective_pc_dim", "pc_entropy", "pc_center_of_mass", "decoder_residual_pc_alignment_bucket"], n=16)}
 
   <h2>Generated plots</h2>
   <ul>{plot_links or '<li>No plots generated.</li>'}</ul>

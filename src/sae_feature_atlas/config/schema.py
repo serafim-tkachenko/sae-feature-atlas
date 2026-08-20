@@ -76,9 +76,16 @@ class FeatureFilterConfig:
 class AnalysisConfig:
     # Atlas-level analysis.
     coactivation_max_pairs: int = 100_000
+    coactivation_min_pair_support: int = 10
+    coactivation_neighbors_per_feature: int = 50
     decoder_neighbors_top_k: int = 20
     decoder_neighbors_batch_size: int = 512
     bimodality_min_points: int = 100
+    bimodality_delta_bic_threshold: float = 10.0
+    bimodality_min_component_weight: float = 0.10
+    bimodality_min_separation: float = 2.0
+    bimodality_gmm_n_init: int = 5
+    bimodality_random_seed: int = 0
     bimodality_top_features_for_examples: int = 50
     bimodality_examples_per_peak: int = 8
     top_examples_per_feature: int = 20
@@ -92,7 +99,7 @@ class AnalysisConfig:
     umap_metric: str = "cosine"
     umap_random_state: int = 42
     # Research-grade geometry extensions.
-    coverage_top_components: tuple[int, ...] = (1, 5, 20)
+    pc_alignment_top_components: tuple[int, ...] = (1, 5, 20)
     graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
 
 
@@ -125,6 +132,10 @@ class ExperimentConfig:
         return self.run_data_dir / "token_metadata.parquet"
 
     @property
+    def source_texts_path(self) -> Path:
+        return self.run_data_dir / "source_texts.jsonl"
+
+    @property
     def sae_activations_path(self) -> Path:
         suffix = "positive" if self.collection.activation_mode == "positive" else "topk"
         return self.run_data_dir / f"sae_activations_{suffix}.parquet"
@@ -147,7 +158,12 @@ class ExperimentConfig:
 
     @property
     def filtered_features_path(self) -> Path:
-        return self.run_data_dir / "filtered_features.parquet"
+        """Compatibility alias; new code should name analysis features."""
+        return self.analysis_features_path
+
+    @property
+    def analysis_features_path(self) -> Path:
+        return self.run_data_dir / "analysis_features.parquet"
 
     @property
     def top_examples_path(self) -> Path:
@@ -162,6 +178,10 @@ class ExperimentConfig:
         return self.run_data_dir / "coactivation_pairs.parquet"
 
     @property
+    def coactivation_metadata_path(self) -> Path:
+        return self.run_data_dir / "coactivation_metadata.json"
+
+    @property
     def decoder_neighbors_path(self) -> Path:
         return self.run_data_dir / "decoder_neighbors.parquet"
 
@@ -172,6 +192,10 @@ class ExperimentConfig:
     @property
     def bimodal_candidates_path(self) -> Path:
         return self.run_data_dir / "bimodal_feature_candidates.parquet"
+
+    @property
+    def bimodality_evaluated_path(self) -> Path:
+        return self.run_data_dir / "bimodality_evaluated_features.parquet"
 
     @property
     def bimodal_peak_examples_path(self) -> Path:
@@ -195,7 +219,16 @@ class ExperimentConfig:
 
     @property
     def feature_coverage_profiles_path(self) -> Path:
-        return self.run_data_dir / "feature_coverage_profiles.parquet"
+        """Compatibility alias for the renamed alignment diagnostic."""
+        return self.decoder_residual_pc_alignment_path
+
+    @property
+    def decoder_residual_pc_alignment_path(self) -> Path:
+        return self.run_data_dir / "decoder_residual_pc_alignment.parquet"
+
+    @property
+    def lineage_path(self) -> Path:
+        return self.run_data_dir / "lineage.json"
 
     @property
     def graph_alignment_path(self) -> Path:

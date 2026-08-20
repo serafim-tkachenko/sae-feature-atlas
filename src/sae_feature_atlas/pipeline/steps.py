@@ -58,7 +58,7 @@ def normalize_steps(steps: str | list[str] = "all", preset: str | None = None) -
     Presets define the public workflow levels:
     - core: collect model activations and SAE activations;
     - atlas: build reusable feature cards and local geometry/coactivation views;
-    - research: atlas plus residual-space coverage and graph-alignment metrics.
+    - research: atlas plus decoder/residual-PC and graph-alignment diagnostics.
     """
     if preset is not None:
         if preset not in STEP_PRESETS:

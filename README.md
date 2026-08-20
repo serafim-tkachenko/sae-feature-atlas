@@ -1,160 +1,131 @@
 # SAE Feature Atlas
 
-SAE Feature Atlas is a local research toolkit for exploring how Gemma Scope SAE
-features cover and organize transformer activations.
+SAE Feature Atlas is a descriptive research toolkit for studying Gemma Scope sparse-autoencoder (SAE) features. Its central objects are empirical SAE activations, same-token interaction structure, decoder geometry, and reproducible context evidence. It does not currently make causal or validated semantic claims.
 
-The project focuses on **descriptive analysis**, not causal-control experiments. It collects model activations, encodes them through a Gemma Scope
-SAE, and builds feature-level evidence from activation statistics, examples,
-coactivation, decoder geometry, bimodality, residual-space coverage, and
-inspection reports.
+## Scientific populations
 
-## What the pipeline answers
+Every result should name the population it estimates:
 
-The current workflow is organized around a small analysis checklist:
+- **All stored activations** are every sparse row persisted by collection. In `topk` mode, these are activations retained by the configured top-k procedure, not all positive SAE activations.
+- **True-positive activations** are conceptually different. They are fully observed only in `positive` collection mode.
+- **Analysis activations** are stored rows whose target tokens pass the explicit corpus, token-quality, position, and activation-row eligibility policy.
+- **Analysis features** have sufficient support in the analysis population for configured downstream analyses.
 
-1. Build a reproducible activation dataset.
-2. Filter usable features and collect top activation examples.
-3. Measure same-token feature coactivation.
-4. Compare decoder-neighbor geometry with empirical coactivation.
-5. Detect possible low/high activation regimes and save examples for manual review.
-6. Inspect features and feature pairs for obvious artifacts.
-7. Compare SAE decoder directions with sampled residual-stream PCA structure.
-8. Build feature cards and markdown/html reports.
+`feature_stats.parquet` retains both stored-population and analysis-population counts. Frequencies use token denominators from token metadata, including tokens that retained no row for a particular feature.
 
-## Installation
+## Current analyses
+
+Core empirical analyses:
+
+1. stored and analysis feature-activity statistics;
+2. tokenizer-decoded activation examples with raw token evidence;
+3. same-token coactivation on an explicit eligible-token universe;
+4. decoder cosine neighbors and orientation-safe comparison with coactivation;
+5. qualified GMM bimodality candidate detection;
+6. feature and example inspection.
+
+Diagnostic and exploratory analyses:
+
+- residual-stream PCA;
+- normalized-decoder PCA;
+- decoder UMAP;
+- decoder/residual-PC alignment;
+- graph-neighborhood alignment.
+
+PCA and UMAP are hypothesis-generation aids, not evidence of semantic axes or clusters. Decoder/residual-PC alignment is not SAE reconstruction quality, residual variance reconstructed, semantic importance, or dictionary coverage.
+
+## Research direction
+
+**Hypothesis / planned experiment -- not a current finding:** some SAE latents may not have a single activation-invariant contextual identity. Conditioning on activation magnitude may reveal distinct coactivation neighborhoods or semantic context distributions that are hidden by assigning one global description to the latent.
+
+The next tests may include posterior-confident regime membership, frequency/support-matched controls, permutation or null baselines, regime-conditioned coactivation, representative contexts, annotation from empirical evidence, held-out evaluation, top-k sensitivity, and replication across SAE/model/layer configurations if the initial signal is real.
+
+## Installation and first run
 
 ```bash
 uv sync
+uv run sae-atlas plan --preset research --model gemma-3-1b-pt --layer 13 --max-texts 100 --top-k 32
+uv run sae-atlas smoke-test --model gemma-3-1b-pt --layer 13
+uv run sae-atlas run --preset research --model gemma-3-1b-pt --layer 13 --max-texts 100 --top-k 32
 ```
 
-The package exposes one CLI:
-
-```bash
-uv run sae-atlas --help
-```
-
-## Recommended first run
-
-Preview the exact resolved configuration and artifact dependencies:
-
-```bash
-uv run sae-atlas plan \
-  --preset research \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --site resid_post \
-  --max-texts 100 \
-  --top-k 32
-```
-
-Check that the selected model/SAE can load:
-
-```bash
-uv run sae-atlas smoke-test \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --site resid_post
-```
-
-Run the analysis:
-
-```bash
-uv run sae-atlas run \
-  --preset research \
-  --model gemma-3-1b-pt \
-  --layer 13 \
-  --site resid_post \
-  --max-texts 100 \
-  --top-k 32
-```
-
-## Presets
+Presets:
 
 ```text
 core      collect
-atlas     collect -> features -> coactivation -> geometry -> geometry-vs-coactivation -> bimodality -> inspection -> space -> cards -> report
-research  atlas + coverage + alignment
+atlas     collect -> features -> coactivation -> geometry -> geometry-vs-coactivation
+          -> bimodality -> inspection -> space -> cards -> report
+research  atlas + coverage (alignment diagnostic) + graph alignment
 ```
 
-## Steps
+The historical CLI step name `coverage` is retained, but it writes `decoder_residual_pc_alignment.parquet`.
 
-```text
-collect                   collect token metadata, sparse SAE activations, and residual samples
-features                  compute feature statistics, filters, top examples, and base feature cards
-coactivation              compute same-token feature coactivation pairs
-geometry                  compute nearest neighbors between SAE decoder directions
-geometry-vs-coactivation  compare decoder-neighbor geometry with empirical coactivation
-bimodality                score activation distributions and save low/high regime examples
-inspection                build automated feature and pair inspection summaries
-space                     compute residual PCA, decoder PCA, and decoder UMAP
-coverage                  compare decoder directions with residual PCA components
-alignment                 compare decoder-neighbor and coactivation-neighbor graphs
-cards                     merge available evidence into canonical feature cards
-report                    write markdown/html reports, plots, and table previews
-```
-
-## Inspection commands
-
-```bash
-uv run sae-atlas inspect-feature --run-name <run> --feature-id 123 --n 10
-uv run sae-atlas inspect-pair --run-name <run> --feature-i 123 --feature-j 456 --n 10
-uv run sae-atlas inspect-bimodal-feature --run-name <run> --feature-id 123 --n 6
-```
-
-Use these after running at least `collect` and `features` - pair inspection also
-benefits from `coactivation` and `geometry-vs-coactivation`.
-
-## Main artifacts
-
-Generated artifacts live under:
+## Important artifacts
 
 ```text
 data/processed/<run_name>/
+  source_texts.jsonl
+  token_metadata.parquet
+  sae_activations_topk.parquet or sae_activations_positive.parquet
+  token_activation_summary.parquet
+  residual_vectors_sample.npy
+  feature_stats.parquet
+  analysis_features.parquet
+  top_feature_examples.parquet
+  coactivation_pairs.parquet
+  coactivation_metadata.json
+  decoder_neighbors.parquet
+  geometry_vs_coactivation.parquet
+  bimodality_evaluated_features.parquet
+  bimodal_feature_candidates.parquet
+  bimodal_peak_examples.parquet
+  inspection_feature_summaries.parquet
+  inspection_pair_summaries.parquet
+  residual_pca_summary.parquet
+  decoder_pca_summary.parquet
+  decoder_feature_pca.parquet
+  decoder_feature_umap.parquet
+  decoder_residual_pc_alignment.parquet
+  feature_graph_alignment.parquet
+  feature_cards.parquet
+  lineage.json
+
 reports/<run_name>/
+  summary.md
+  index.html
+  inspection_report.md
+  inspection_report.json
+  manifest.json
 ```
 
-Important data artifacts:
+Human-facing examples decode a contiguous token-ID span with the actual tokenizer. They also retain text and token positions, raw token IDs/strings, target token identity, activation, target quality, and display quality.
 
-```text
-token_metadata.parquet
-sae_activations_topk.parquet or sae_activations_positive.parquet
-residual_vectors_sample.npy
-feature_stats.parquet
-filtered_features.parquet
-top_feature_examples.parquet
-coactivation_pairs.parquet
-decoder_neighbors.parquet
-geometry_vs_coactivation.parquet
-bimodal_feature_candidates.parquet
-bimodal_peak_examples.parquet
-inspection_feature_summaries.parquet
-inspection_pair_summaries.parquet
-residual_pca_summary.parquet
-decoder_pca_summary.parquet
-decoder_feature_pca.parquet
-decoder_feature_umap.parquet
-feature_coverage_profiles.parquet
-feature_graph_alignment.parquet
-feature_cards.parquet
-```
+## Lineage and existing artifacts
 
-Important report artifacts:
+`lineage.json` records an artifact schema version, deterministic collection and analysis fingerprints, Git SHA, and dirty state. Population-defining changes cannot silently reuse incompatible derived artifacts. The `features` step is the intentional boundary where a compatible raw collection may be reused to regenerate all analysis-policy-dependent outputs.
 
-```text
-summary.md
-index.html
-inspection_report.md
-plots/
-tables/
-manifest.json
-```
+Usually reusable after verifying collection identity and internal coherence:
+
+- source texts and token metadata;
+- stored sparse activations;
+- token activation summaries;
+- residual samples, with sampling caveats.
+
+Must be regenerated under this schema:
+
+- feature statistics and analysis features;
+- examples, coactivation, geometry/coactivation comparisons;
+- bimodality outputs and inspection summaries;
+- triage labels, graph alignment, feature cards, plots, and reports.
+
+Legacy raw collections without lineage must be explicitly reviewed and migrated or recollected; their existence alone is not sufficient evidence of compatibility.
 
 ## Interpretation caveats
 
-- Feature cards are multi-evidence profiles, not final explanations.
-- Automated labels are heuristic triage labels, not ground-truth semantics.
-- In `topk` mode, feature frequency means frequency among stored top-k rows, not
-  true positive activation frequency.
-- Bimodality is a statistical signal - low/high examples require manual review.
-- Decoder cosine and coactivation are descriptive relationships, not causal proof.
-- Residual PCA coverage depends on sampled corpus, layer, and number of PCA components.
+- Top-k observations are rank-censored; stored frequency is not true-positive activation frequency.
+- Coactivation in top-k mode is joint retained feature membership on the same eligible token. PMI is support-sensitive; a minimum pair count is enforced.
+- Missing empirical edges are not automatically observed zeros: they may be unsupported, ineligible, or omitted by retention/storage guards.
+- Decoder geometry is descriptive and not proof of semantic equivalence or causal interaction.
+- A two-component GMM preference does not prove two semantic concepts.
+- `interpretability_triage_score` and triage labels prioritize review; they are not semantic descriptions or confidence estimates.
+- Semantic annotations require empirical-context evidence, counterexamples, uncertainty, provenance, and held-out validation.

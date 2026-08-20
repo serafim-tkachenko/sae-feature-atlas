@@ -107,7 +107,7 @@ def _first_top_examples(top_examples: pd.DataFrame, feature_id: int, n: int = 5)
 
 def _manual_priority_from_scores(
     artifact_score: float,
-    semantic_score: float,
+    interpretability_triage_score: float,
     n_activations: int,
     high_intensity: bool,
 ) -> str:
@@ -122,10 +122,10 @@ def _manual_priority_from_scores(
     if high_intensity and artifact_score < 0.25:
         return "high"
 
-    if semantic_score >= 0.95 and n_activations >= 100 and artifact_score < 0.10:
+    if interpretability_triage_score >= 0.95 and n_activations >= 100 and artifact_score < 0.10:
         return "high"
 
-    if semantic_score >= 0.85 and n_activations >= 50 and artifact_score < 0.18:
+    if interpretability_triage_score >= 0.85 and n_activations >= 50 and artifact_score < 0.18:
         return "medium"
 
     return "unreviewed"
@@ -141,7 +141,7 @@ def _feature_labels_from_scores(
     source_is_informative: bool,
     position_concentration: float,
     artifact_score: float,
-    semantic_score: float,
+    interpretability_triage_score: float,
     n_activations: int,
 ) -> list[str]:
     """Assign local inspection labels.
@@ -183,7 +183,7 @@ def _feature_labels_from_scores(
     # It means "worth manually inspecting as a potentially interpretable feature".
     if (
         artifact_score < 0.10
-        and semantic_score >= 0.95
+        and interpretability_triage_score >= 0.95
         and n_activations >= 100
         and token_concentration < 0.20
         and position_concentration < 0.25
@@ -272,12 +272,12 @@ def _summarize_feature_group(
         + 0.02 * position_concentration
     )
 
-    # Semantic score is only a triage score.
+    # Interpretability triage score is only a triage score.
     # It rewards variety and penalizes obvious artifact indicators.
     diversity_score = 1.0 - max(token_concentration, position_concentration)
     non_artifact_score = 1.0 - min(1.0, artifact_score)
     token_quality_score = 1.0 - min(1.0, punctuation_share + quote_share + space_share)
-    semantic_score = max(
+    interpretability_triage_score = max(
         0.0,
         0.40 * non_artifact_score + 0.35 * diversity_score + 0.25 * token_quality_score,
     )
@@ -296,13 +296,13 @@ def _summarize_feature_group(
         source_is_informative=source_is_informative,
         position_concentration=position_concentration,
         artifact_score=artifact_score,
-        semantic_score=semantic_score,
+        interpretability_triage_score=interpretability_triage_score,
         n_activations=n,
     )
 
     manual_priority = _manual_priority_from_scores(
         artifact_score=artifact_score,
-        semantic_score=semantic_score,
+        interpretability_triage_score=interpretability_triage_score,
         n_activations=n,
         high_intensity=high_intensity,
     )
@@ -324,7 +324,7 @@ def _summarize_feature_group(
         "source_is_informative": bool(source_is_informative),
         "position_concentration": float(position_concentration),
         "artifact_score": float(artifact_score),
-        "semantic_score": float(semantic_score),
+        "interpretability_triage_score": float(interpretability_triage_score),
         "manual_priority": manual_priority,
         "inspection_labels": labels,
         "top_tokens": token_counts.head(10).to_dict(),
@@ -498,7 +498,7 @@ def feature_summaries_to_frame(items: list[dict]) -> pd.DataFrame:
                 "source_is_informative": item.get("source_is_informative", False),
                 "position_concentration": item.get("position_concentration", math.nan),
                 "artifact_score": item.get("artifact_score", math.nan),
-                "semantic_score": item.get("semantic_score", math.nan),
+                "interpretability_triage_score": item.get("interpretability_triage_score", math.nan),
                 "manual_priority": item.get("manual_priority", "unreviewed"),
                 "inspection_labels": ",".join(item.get("inspection_labels", [])),
                 "top_tokens_json": _json(item.get("top_tokens", {})),
@@ -581,7 +581,7 @@ def write_inspection_reports(
             x for x in feature_summaries
             if "manual_review" in x.get("inspection_labels", [])
         ],
-        key=lambda x: x.get("semantic_score", 0),
+        key=lambda x: x.get("interpretability_triage_score", 0),
         reverse=True,
     )[:20]
 
@@ -617,7 +617,7 @@ def write_inspection_reports(
         lines.append(f"### Feature {item['feature_id']}")
         lines.append(f"- Labels: `{', '.join(item.get('inspection_labels', [])) or 'none'}`")
         lines.append(f"- Artifact score: `{item.get('artifact_score', math.nan):.3f}`")
-        lines.append(f"- Semantic score: `{item.get('semantic_score', math.nan):.3f}`")
+        lines.append(f"- Interpretability triage score: `{item.get('interpretability_triage_score', math.nan):.3f}`")
         lines.append(
             f"- Quote / punctuation / boundary share: "
             f"`{item.get('quote_share', math.nan):.2f}` / "
@@ -639,7 +639,7 @@ def write_inspection_reports(
     lines.append("")
     for item in manual_reviews:
         lines.append(f"### Feature {item['feature_id']}")
-        lines.append(f"- Semantic score: `{item.get('semantic_score', math.nan):.3f}`")
+        lines.append(f"- Interpretability triage score: `{item.get('interpretability_triage_score', math.nan):.3f}`")
         lines.append(f"- Artifact score: `{item.get('artifact_score', math.nan):.3f}`")
         lines.append(f"- Labels: `{', '.join(item.get('inspection_labels', [])) or 'none'}`")
         lines.append("")
@@ -673,7 +673,7 @@ def write_inspection_reports(
         lines.append(f"### Feature {item['feature_id']}")
         lines.append(f"- Labels: `{', '.join(item.get('inspection_labels', [])) or 'none'}`")
         lines.append(f"- Artifact score: `{item.get('artifact_score', math.nan):.3f}`")
-        lines.append(f"- Semantic score: `{item.get('semantic_score', math.nan):.3f}`")
+        lines.append(f"- Interpretability triage score: `{item.get('interpretability_triage_score', math.nan):.3f}`")
         lines.append("")
 
     (report_dir / "inspection_report.md").write_text("\n".join(lines), encoding="utf-8")

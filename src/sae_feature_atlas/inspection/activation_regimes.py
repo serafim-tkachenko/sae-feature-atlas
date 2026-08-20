@@ -9,64 +9,60 @@ from sklearn.mixture import GaussianMixture
 from tqdm import tqdm
 
 
-def _fit_two_component_log_gmm(values: np.ndarray) -> GaussianMixture | None:
+def _fit_two_component_log_gmm(
+    values: np.ndarray,
+    *,
+    random_seed: int = 0,
+    n_init: int = 5,
+) -> GaussianMixture | None:
     values = values[np.isfinite(values)]
     values = values[values > 0]
     if len(values) < 2:
         return None
     x = np.log1p(values).reshape(-1, 1)
     try:
-        return GaussianMixture(n_components=2, random_state=0).fit(x)
-    except Exception:
+        return GaussianMixture(
+            n_components=2,
+            random_state=random_seed,
+            n_init=n_init,
+        ).fit(x)
+    except (ValueError, FloatingPointError, np.linalg.LinAlgError):
         return None
 
 
-def _context_rows(feature_rows: pd.DataFrame, token_meta: pd.DataFrame, context_window: int) -> pd.DataFrame:
-    """Attach token context to activation rows.
-
-    This intentionally mirrors top-example style context so bimodal low/high regimes
-    can be inspected by humans rather than treated as self-explanatory metrics.
-    """
-    if feature_rows.empty:
-        return pd.DataFrame()
-    meta = token_meta[["text_id", "token_pos", "source", "token_str"]].copy()
+def _context_rows(
+    feature_rows: pd.DataFrame,
+    renderer,
+    context_window: int,
+) -> pd.DataFrame:
+    """Attach shared raw evidence and decoded display context."""
     rows: list[dict] = []
-    grouped_meta = {int(tid): group.sort_values("token_pos") for tid, group in meta.groupby("text_id")}
     for row in feature_rows.to_dict("records"):
-        text_id = int(row["text_id"])
-        token_pos = int(row["token_pos"])
-        group = grouped_meta.get(text_id)
-        if group is None:
-            continue
-        left = group[(group["token_pos"] >= token_pos - context_window) & (group["token_pos"] < token_pos)]
-        center = group[group["token_pos"] == token_pos]
-        right = group[(group["token_pos"] > token_pos) & (group["token_pos"] <= token_pos + context_window)]
-        rows.append(
-            {
-                **row,
-                "source": row.get("source", center["source"].iloc[0] if not center.empty else ""),
-                "left_context": "".join(left["token_str"].astype(str).tolist()),
-                "center_token": center["token_str"].iloc[0] if not center.empty else "",
-                "right_context": "".join(right["token_str"].astype(str).tolist()),
-            }
+        context = renderer.render(
+            text_id=int(row["text_id"]),
+            token_pos=int(row["token_pos"]),
+            context_window=context_window,
         )
+        rows.append({**row, **context, "activation_population": "analysis_activations"})
     return pd.DataFrame(rows)
 
 
 def build_bimodal_peak_examples(
     acts: pd.DataFrame,
-    token_meta: pd.DataFrame,
+    renderer,
     candidates: pd.DataFrame,
     *,
     top_features: int = 50,
     examples_per_peak: int = 8,
     context_window: int = 20,
+    random_seed: int = 0,
+    n_init: int = 5,
 ) -> pd.DataFrame:
     """Build low/high activation-regime examples for ranked bimodal features.
 
-    The output addresses the analysis question behind bimodality: not only
-    whether a feature has two activation-strength modes, but which token contexts
-    belong to the low and high modes.
+    The output supplies representative, posterior-confident context evidence
+    for qualified statistical candidates. It does not establish two semantic
+    concepts or final regime membership.
     """
     if acts.empty or candidates.empty:
         return pd.DataFrame()
@@ -90,27 +86,40 @@ def build_bimodal_peak_examples(
         if feature_rows.empty:
             continue
         values = feature_rows["activation"].to_numpy(dtype=np.float64)
-        gmm = _fit_two_component_log_gmm(values)
+        gmm = _fit_two_component_log_gmm(values, random_seed=random_seed, n_init=n_init)
         if gmm is None:
             continue
 
         x = np.log1p(feature_rows["activation"].to_numpy(dtype=np.float64)).reshape(-1, 1)
-        labels = gmm.predict(x)
+        probabilities = gmm.predict_proba(x)
+        labels = probabilities.argmax(axis=1)
         means = gmm.means_.reshape(-1)
         low_component = int(np.argmin(means))
         high_component = int(np.argmax(means))
         feature_rows["log_activation"] = x.reshape(-1)
         feature_rows["peak_label"] = np.where(labels == low_component, "low", "high")
+        feature_rows["component_posterior"] = probabilities.max(axis=1)
+        assigned_means = np.where(labels == low_component, means[low_component], means[high_component])
+        feature_rows["distance_to_component_log_mean"] = np.abs(x.reshape(-1) - assigned_means)
         feature_rows["peak_log_mean_low"] = float(means[low_component])
         feature_rows["peak_log_mean_high"] = float(means[high_component])
         feature_rows["bimodality_score"] = float(bimodality_score_by_feature.get(feature_id, np.nan))
 
-        low = feature_rows[feature_rows["peak_label"].eq("low")].sort_values("activation", ascending=False).head(examples_per_peak)
-        high = feature_rows[feature_rows["peak_label"].eq("high")].sort_values("activation", ascending=False).head(examples_per_peak)
+        example_sort = ["component_posterior", "distance_to_component_log_mean"]
+        low = (
+            feature_rows[feature_rows["peak_label"].eq("low")]
+            .sort_values(example_sort, ascending=[False, True])
+            .head(examples_per_peak)
+        )
+        high = (
+            feature_rows[feature_rows["peak_label"].eq("high")]
+            .sort_values(example_sort, ascending=[False, True])
+            .head(examples_per_peak)
+        )
         examples = pd.concat([low, high], ignore_index=True)
         if examples.empty:
             continue
-        rows.append(_context_rows(examples, token_meta, context_window=context_window))
+        rows.append(_context_rows(examples, renderer, context_window=context_window))
 
     if not rows:
         return pd.DataFrame()
@@ -120,15 +129,28 @@ def build_bimodal_peak_examples(
         "peak_label",
         "activation",
         "log_activation",
+        "component_posterior",
+        "distance_to_component_log_mean",
         "bimodality_score",
         "peak_log_mean_low",
         "peak_log_mean_high",
         "text_id",
         "token_pos",
         "source",
+        "context_start_pos",
+        "context_end_pos",
+        "context_token_ids_json",
+        "raw_token_strings_json",
+        "target_token_id",
+        "target_token_str",
+        "target_quality",
+        "display_quality",
+        "display_context",
         "left_context",
         "center_token",
-        "right_context"]
+        "right_context",
+        "activation_population",
+    ]
     keep = [col for col in keep if col in out.columns]
     return out[keep].sort_values(["bimodality_score", "feature_id", "peak_label", "activation"], ascending=[False, True, True, False]).reset_index(drop=True)
 

@@ -1,42 +1,35 @@
 # Concepts
 
-## Residual activations
+## Scientific activation populations
 
-Residual activations are vectors from a selected transformer residual-stream hook,
-for example `blocks.13.hook_resid_post`.
+`all_stored_activations` contains every persisted sparse activation row. Under top-k collection, appearance means retained top-k membership and must not be called a true-positive activation.
 
-## SAE activations
+`analysis_activations` is the deterministic subset whose target token passes the configured corpus, position, token-quality, and activation-row policy. Artifact activity remains in the stored population even when excluded from human-facing analysis.
 
-The selected SAE encodes residual activations into sparse feature
-activations. The pipeline stores either top-k activations per token or all
-positive activations, depending on `--activation-mode`.
+`analysis_features` contains features meeting configured support requirements in the analysis population. Downstream call sites state this population explicitly.
 
-## Feature cards
+## Context evidence
 
-A feature card is a table row that merges available evidence for one feature:
-frequency, top examples, inspection scores, bimodality, decoder neighbors,
-coactivation, coverage, and graph alignment.
+Raw evidence records text ID, target and context positions, contiguous token IDs, raw token strings, target token ID/string, activation value, target quality, and display quality. Display text is decoded from the contiguous ID span by the actual tokenizer rather than by joining token strings. Punctuation in the surrounding display context does not invalidate a clean target.
 
 ## Coactivation
 
-Coactivation means two SAE features are active on the same token position. It is
-a usage-overlap measure, not causal evidence.
+Under top-k storage, coactivation is joint retained feature membership on the same eligible token. Counts, marginals, and PMI use one unique token-feature representation and the full explicit eligible-token denominator. Minimum support and retention metadata distinguish measured edges from missing or truncated ones.
 
 ## Decoder geometry
 
-Decoder geometry compares SAE decoder directions by cosine similarity. Nearby
-decoder directions may be related, but cosine similarity is not proof of shared
-semantics.
+Decoder cosine neighbors are directed. Empirical coactivation pairs are unordered, so comparisons use canonical pair keys while preserving directed neighbor rank. Unmatched edges are missing, not zero coactivation.
 
 ## Bimodality
 
-Bimodality analysis asks whether a feature's activation strengths look better
-explained by two regimes than one. The artifact is named
-`bimodal_feature_candidates.parquet` because this is only a statistical signal;
-manual review should use `bimodal_peak_examples.parquet`.
+Every eligible feature receives an evaluation status. A separate candidate artifact contains only converged fits meeting configured delta-BIC, component weight, and separation thresholds. Under top-k storage, these distributions are rank-censored. GMM preference is not evidence of distinct semantic concepts.
 
-## Residual PCA coverage
+## Triage and semantic annotation
 
-Coverage compares normalized SAE decoder directions with PCA components fitted on
-sampled residual vectors. This helps describe where features sit relative to the
-observed residual-space variance.
+Artifact scores, `interpretability_triage_score`, manual priority, and labels such as `likely_artifact`, `high_frequency`, `bimodal_candidate`, and `manual_review` are heuristic triage.
+
+A semantic annotation is a separate structured record built primarily from empirical contexts. It supports descriptions, scope, evidence IDs, counterexamples, uncertainty/failure modes, confidence, abstention, regime-specific descriptions, and annotator provenance. Decoder and coactivation neighbors are supplementary evidence, not direct language translations of decoder vectors.
+
+## Diagnostic geometry
+
+Residual PCA, normalized-decoder PCA, decoder UMAP, graph alignment, and decoder/residual-PC alignment are descriptive diagnostics or exploratory tools. They do not establish semantic axes, reconstruction quality, or causal structure.

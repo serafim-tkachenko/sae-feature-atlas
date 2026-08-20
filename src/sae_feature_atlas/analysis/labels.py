@@ -133,7 +133,7 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
         0.0,
         index=out.index,
     )
-    semantic_score = _safe_numeric(out.get("semantic_score"), 0.0, index=out.index)
+    interpretability_triage_score = _safe_numeric(out.get("interpretability_triage_score"), 0.0, index=out.index)
 
     existing_labels = [_split_labels(v) for v in out["inspection_labels"].tolist()]
 
@@ -202,7 +202,7 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
         & ~likely_artifact
         & (n_token_activations >= 100)
         & (artifact_score < 0.10)
-        & (semantic_score >= 0.95)
+        & (interpretability_triage_score >= 0.95)
     )
     add_label(strict_manual_review, "manual_review")
 

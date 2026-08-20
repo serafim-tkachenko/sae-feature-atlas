@@ -6,7 +6,7 @@ import pandas as pd
 
 from sae_feature_atlas.config.schema import ExperimentConfig
 from sae_feature_atlas.analysis.feature_stats import build_top_examples, compute_feature_stats
-from sae_feature_atlas.analysis.feature_filters import apply_activation_row_filters, apply_feature_filters
+from sae_feature_atlas.analysis.feature_filters import apply_feature_filters
 from sae_feature_atlas.analysis.labels import assign_feature_labels
 
 
@@ -26,7 +26,9 @@ def _top_examples_json(df: pd.DataFrame, n: int = 5) -> str:
         "right_context",
     ]
     existing_cols = [col for col in cols if col in df.columns]
-    records = df.sort_values("activation", ascending=False).head(n)[existing_cols].to_dict("records")
+    records = (
+        df.sort_values("activation", ascending=False).head(n)[existing_cols].to_dict("records")
+    )
     return _json(records)
 
 
@@ -54,21 +56,21 @@ def _merge_replace(
 
 
 def build_basic_feature_cards(
-    filtered_features: pd.DataFrame,
+    analysis_features: pd.DataFrame,
     top_examples: pd.DataFrame,
     cfg: ExperimentConfig,
 ) -> pd.DataFrame:
     """Build the base feature-card table.
 
     Later steps add independent evidence channels: inspection, coactivation,
-    decoder geometry, activation regimes, residual coverage and graph alignment
+    decoder geometry, activation regimes, decoder/residual-PC alignment and graph alignment
     """
     rows: list[dict] = []
     for feature_id, group in top_examples.groupby("feature_id"):
         rows.append({"feature_id": int(feature_id), "top_examples_json": _top_examples_json(group)})
 
     examples_df = pd.DataFrame(rows)
-    cards = filtered_features.merge(examples_df, on="feature_id", how="left")
+    cards = analysis_features.merge(examples_df, on="feature_id", how="left")
 
     cards["model_name"] = cfg.model.model_name
     cards["sae_release"] = cfg.model.sae_release
@@ -86,34 +88,46 @@ def build_basic_feature_cards(
 
 
 def build_and_save_feature_outputs(
-    acts: pd.DataFrame,
-    token_meta: pd.DataFrame,
+    populations,
+    renderer,
     cfg: ExperimentConfig,
 ) -> dict:
-    acts_filtered = apply_activation_row_filters(acts, cfg.activation_filter)
-    feature_stats = compute_feature_stats(acts_filtered, token_meta)
-    filtered_features = apply_feature_filters(feature_stats, cfg.feature_filter)
+    feature_stats = compute_feature_stats(
+        populations,
+        activation_mode=cfg.collection.activation_mode,
+    )
+    analysis_features = apply_feature_filters(feature_stats, cfg.feature_filter)
+    analysis_feature_ids = set(analysis_features["feature_id"].astype(int))
     top_examples = build_top_examples(
-        acts_filtered,
-        token_meta,
+        populations.analysis_activations,
+        renderer,
         top_n=cfg.analysis.top_examples_per_feature,
         context_window=cfg.analysis.context_window,
+        feature_ids=analysis_feature_ids,
     )
-    cards = build_basic_feature_cards(filtered_features, top_examples, cfg)
+    cards = build_basic_feature_cards(analysis_features, top_examples, cfg)
+    cards["activation_population"] = "analysis_activations"
+    cards["feature_population"] = "analysis_features"
 
     cfg.run_data_dir.mkdir(parents=True, exist_ok=True)
     feature_stats.to_parquet(cfg.feature_stats_path, index=False)
-    filtered_features.to_parquet(cfg.filtered_features_path, index=False)
+    analysis_features.to_parquet(cfg.analysis_features_path, index=False)
     top_examples.to_parquet(cfg.top_examples_path, index=False)
     cards.to_parquet(cfg.feature_cards_path, index=False)
 
     return {
-        "input_sparse_activation_rows": int(len(acts)),
-        "input_unique_active_features": int(acts["feature_id"].nunique()),
-        "filtered_sparse_activation_rows": int(len(acts_filtered)),
-        "filtered_unique_active_features": int(acts_filtered["feature_id"].nunique()),
+        "stored_sparse_activation_rows": int(len(populations.all_stored_activations)),
+        "stored_unique_active_features": int(
+            populations.all_stored_activations["feature_id"].nunique()
+        ),
+        "analysis_sparse_activation_rows": int(len(populations.analysis_activations)),
+        "analysis_unique_active_features": int(
+            populations.analysis_activations["feature_id"].nunique()
+        ),
+        "stored_token_count": int(len(populations.stored_tokens)),
+        "analysis_token_count": int(len(populations.analysis_tokens)),
         "feature_stats_rows": int(len(feature_stats)),
-        "filtered_features_rows": int(len(filtered_features)),
+        "analysis_features_rows": int(len(analysis_features)),
         "top_examples_rows": int(len(top_examples)),
         "feature_cards_rows": int(len(cards)),
     }
@@ -122,12 +136,12 @@ def build_and_save_feature_outputs(
 def _load_feature_cards_base(cfg: ExperimentConfig) -> pd.DataFrame:
     if cfg.feature_cards_path.exists():
         return pd.read_parquet(cfg.feature_cards_path)
-    if not cfg.filtered_features_path.exists():
+    if not cfg.analysis_features_path.exists():
         raise FileNotFoundError(
-            f"Missing both {cfg.feature_cards_path} and {cfg.filtered_features_path}. "
+            f"Missing both {cfg.feature_cards_path} and {cfg.analysis_features_path}. "
             "Run the `features` step first."
         )
-    cards = pd.read_parquet(cfg.filtered_features_path)
+    cards = pd.read_parquet(cfg.analysis_features_path)
     cards["model_name"] = cfg.model.model_name
     cards["sae_release"] = cfg.model.sae_release
     cards["sae_id"] = cfg.model.sae_id
@@ -163,7 +177,7 @@ def _merge_inspection(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             "source_is_informative",
             "position_concentration",
             "artifact_score",
-            "semantic_score",
+            "interpretability_triage_score",
             "manual_priority",
             "inspection_labels",
             "top_tokens_json",
@@ -179,8 +193,23 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
         keep = [
             "feature_id",
             "bimodality_score",
+            "delta_bic",
+            "bic_1",
+            "bic_2",
+            "component_weight_low",
+            "component_weight_high",
+            "minimum_component_weight",
+            "mode_separation",
+            "converged",
+            "n_iter_1",
+            "n_iter_2",
+            "gmm_random_seed",
+            "gmm_n_init",
+            "rank_censored",
             "log_mean_low",
             "log_mean_high",
+            "log_variance_low",
+            "log_variance_high",
             "activation_min",
             "activation_p50",
             "activation_p95",
@@ -188,7 +217,12 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             "n_points",
         ]
         keep = [col for col in keep if col in bimodal.columns]
-        cards = _merge_replace(cards, bimodal[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
+        cards = _merge_replace(
+            cards,
+            bimodal[keep],
+            on="feature_id",
+            columns_to_replace=[c for c in keep if c != "feature_id"],
+        )
 
     if cfg.bimodal_peak_examples_path.exists():
         examples = pd.read_parquet(cfg.bimodal_peak_examples_path)
@@ -205,8 +239,16 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             ]
             cols = [col for col in cols if col in examples.columns]
             for feature_id, group in examples.groupby("feature_id"):
-                low = group[group["peak_label"].astype(str).eq("low")].sort_values("activation", ascending=False).head(5)
-                high = group[group["peak_label"].astype(str).eq("high")].sort_values("activation", ascending=False).head(5)
+                low = (
+                    group[group["peak_label"].astype(str).eq("low")]
+                    .sort_values("activation", ascending=False)
+                    .head(5)
+                )
+                high = (
+                    group[group["peak_label"].astype(str).eq("high")]
+                    .sort_values("activation", ascending=False)
+                    .head(5)
+                )
                 rows.append(
                     {
                         "feature_id": int(feature_id),
@@ -222,6 +264,7 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             )
     return cards
 
+
 def _merge_decoder_neighbors(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
     if not cfg.decoder_neighbors_path.exists():
         return cards
@@ -235,17 +278,26 @@ def _merge_decoder_neighbors(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.D
         .reset_index()
         .rename(columns={"feature_i": "feature_id", "decoder_cosine": "max_decoder_cosine"})
     )
-    cards = _merge_replace(cards, max_cos, on="feature_id", columns_to_replace=["max_decoder_cosine"])
+    cards = _merge_replace(
+        cards, max_cos, on="feature_id", columns_to_replace=["max_decoder_cosine"]
+    )
 
     rows: list[dict] = []
     for feature_id, group in neighbors.groupby("feature_i"):
         rows.append(
             {
                 "feature_id": int(feature_id),
-                "top_decoder_neighbors_json": _json(group.sort_values("rank").head(10).to_dict("records")),
+                "top_decoder_neighbors_json": _json(
+                    group.sort_values("rank").head(10).to_dict("records")
+                ),
             }
         )
-    return _merge_replace(cards, pd.DataFrame(rows), on="feature_id", columns_to_replace=["top_decoder_neighbors_json"])
+    return _merge_replace(
+        cards,
+        pd.DataFrame(rows),
+        on="feature_id",
+        columns_to_replace=["top_decoder_neighbors_json"],
+    )
 
 
 def _merge_coactivation(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
@@ -255,8 +307,12 @@ def _merge_coactivation(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
     if coactivation.empty:
         return cards
 
-    left = coactivation.rename(columns={"feature_i": "feature_id", "feature_j": "neighbor_feature_id"})
-    right = coactivation.rename(columns={"feature_j": "feature_id", "feature_i": "neighbor_feature_id"})
+    left = coactivation.rename(
+        columns={"feature_i": "feature_id", "feature_j": "neighbor_feature_id"}
+    )
+    right = coactivation.rename(
+        columns={"feature_j": "feature_id", "feature_i": "neighbor_feature_id"}
+    )
     both = pd.concat([left, right], ignore_index=True)
 
     aggregate = (
@@ -274,8 +330,18 @@ def _merge_coactivation(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
     rows: list[dict] = []
     for feature_id, group in both.groupby("feature_id"):
         top = group.sort_values(["jaccard", "pmi", "coactivation_count"], ascending=False).head(10)
-        rows.append({"feature_id": int(feature_id), "top_coactivation_neighbors_json": _json(top.to_dict("records"))})
-    return _merge_replace(cards, pd.DataFrame(rows), on="feature_id", columns_to_replace=["top_coactivation_neighbors_json"])
+        rows.append(
+            {
+                "feature_id": int(feature_id),
+                "top_coactivation_neighbors_json": _json(top.to_dict("records")),
+            }
+        )
+    return _merge_replace(
+        cards,
+        pd.DataFrame(rows),
+        on="feature_id",
+        columns_to_replace=["top_coactivation_neighbors_json"],
+    )
 
 
 def _merge_decoder_pca(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
@@ -285,23 +351,32 @@ def _merge_decoder_pca(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFra
     keep = [col for col in ["feature_id", "decoder_pc1", "decoder_pc2"] if col in pca.columns]
     if len(keep) <= 1:
         return cards
-    return _merge_replace(cards, pca[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
+    return _merge_replace(
+        cards, pca[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"]
+    )
 
 
 def _merge_decoder_umap(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
     if not cfg.decoder_feature_umap_path.exists():
         return cards
     umap_df = pd.read_parquet(cfg.decoder_feature_umap_path)
-    keep = [col for col in ["feature_id", "decoder_umap_x", "decoder_umap_y"] if col in umap_df.columns]
+    keep = [
+        col for col in ["feature_id", "decoder_umap_x", "decoder_umap_y"] if col in umap_df.columns
+    ]
     if len(keep) <= 1:
         return cards
-    return _merge_replace(cards, umap_df[keep], on="feature_id", columns_to_replace=[c for c in keep if c != "feature_id"])
+    return _merge_replace(
+        cards,
+        umap_df[keep],
+        on="feature_id",
+        columns_to_replace=[c for c in keep if c != "feature_id"],
+    )
 
 
-def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
-    if not cfg.feature_coverage_profiles_path.exists():
+def _merge_pc_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
+    if not cfg.decoder_residual_pc_alignment_path.exists():
         return cards
-    coverage = pd.read_parquet(cfg.feature_coverage_profiles_path)
+    alignment = pd.read_parquet(cfg.decoder_residual_pc_alignment_path)
     columns = [
         "pc_mass_observed",
         "pc_mass_unobserved_tail",
@@ -313,10 +388,9 @@ def _merge_coverage(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
         "pc_mass_top_20",
         "pc_norm_mass_top_1",
         "pc_norm_mass_top_5",
-        "pc_norm_mass_top_20",
-        "coverage_bucket",
+        "decoder_residual_pc_alignment_bucket",
     ]
-    return _merge_replace(cards, coverage, on="feature_id", columns_to_replace=columns)
+    return _merge_replace(cards, alignment, on="feature_id", columns_to_replace=columns)
 
 
 def _merge_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame:
@@ -334,7 +408,6 @@ def _merge_alignment(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFrame
     return _merge_replace(cards, alignment, on="feature_id", columns_to_replace=columns)
 
 
-
 def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
     """Build the canonical feature-card table from all available evidence channels."""
     cards = _load_feature_cards_base(cfg)
@@ -345,7 +418,7 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
     cards = _merge_coactivation(cards, cfg)
     cards = _merge_decoder_pca(cards, cfg)
     cards = _merge_decoder_umap(cards, cfg)
-    cards = _merge_coverage(cards, cfg)
+    cards = _merge_pc_alignment(cards, cfg)
     cards = _merge_alignment(cards, cfg)
 
     cards = assign_feature_labels(cards)
@@ -356,9 +429,18 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "manual_priority",
         "inspection_labels",
         "artifact_score",
-        "semantic_score",
+        "interpretability_triage_score",
         "graph_agreement_score",
-        "coverage_coherence_score",
+        "stored_activation_count",
+        "analysis_activation_count",
+        "stored_text_count",
+        "analysis_text_count",
+        "stored_token_frequency",
+        "analysis_token_frequency",
+        "analysis_to_stored_support_ratio",
+        "stored_token_denominator",
+        "analysis_token_denominator",
+        "stored_frequency_semantics",
         "n_token_activations",
         "n_texts",
         "token_frequency",
@@ -376,10 +458,9 @@ def enrich_feature_cards(cfg: ExperimentConfig) -> pd.DataFrame:
         "gca_at_10",
         "gca_at_20",
         "graph_alignment_bucket",
-        "pc_norm_mass_top_20",
-        "effective_pc_dim",
+                "effective_pc_dim",
         "pc_entropy",
-        "coverage_bucket",
+        "decoder_residual_pc_alignment_bucket",
         "decoder_pc1",
         "decoder_pc2",
         "decoder_umap_x",
