@@ -98,7 +98,7 @@ class AnalysisConfig:
     umap_min_dist: float = 0.10
     umap_metric: str = "cosine"
     umap_random_state: int = 42
-    # Research-grade geometry extensions.
+    # Exploratory geometry diagnostics.
     pc_alignment_top_components: tuple[int, ...] = (1, 5, 20)
     graph_alignment_k_values: tuple[int, ...] = (5, 10, 20)
 

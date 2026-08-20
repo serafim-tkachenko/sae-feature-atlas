@@ -10,7 +10,7 @@ The pipeline step:
 uv run sae-atlas run --steps inspection --run-name <run>
 ```
 
-reads activation rows, top examples, filtered features, and optionally
+reads activation rows, top examples, analysis features, and optionally
 coactivation/bimodality artifacts. It writes:
 
 ```text

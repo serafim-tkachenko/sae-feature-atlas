@@ -298,7 +298,7 @@ def run_coverage(cfg: ExperimentConfig) -> dict:
 
 
 def run_alignment(cfg: ExperimentConfig) -> dict:
-    """Research-grade graph alignment between decoder geometry and coactivation."""
+    """Compute a graph-alignment diagnostic for decoder geometry and coactivation."""
     analysis_features = pd.read_parquet(cfg.analysis_features_path)
     alignment, summary = compute_graph_alignment(
         decoder_neighbors=pd.read_parquet(cfg.decoder_neighbors_path),

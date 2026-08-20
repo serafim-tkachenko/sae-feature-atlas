@@ -21,11 +21,23 @@ def _config(tmp_path):
 
 def test_manifest_names_population_and_lineage_artifacts(tmp_path) -> None:
     manifest = build_run_manifest(_config(tmp_path), metrics={}, stage="test")
+    artifact_names = set(manifest["artifacts"])
 
     assert manifest["artifact_schema_version"] >= 2
-    assert "analysis_features" in manifest["artifacts"]
-    assert "filtered_features" not in manifest["artifacts"]
-    assert "lineage" in manifest["artifacts"]
+    assert {
+        "analysis_features",
+        "inspection_feature_summaries",
+        "inspection_pair_summaries",
+        "inspection_report_md",
+        "inspection_report_json",
+        "residual_pca_summary",
+        "decoder_pca_summary",
+        "decoder_feature_pca",
+        "decoder_feature_umap",
+        "graph_alignment_summary",
+        "lineage",
+    }.issubset(artifact_names)
+    assert "filtered_features" not in artifact_names
     assert "retained top-k memberships" in manifest["population_semantics"]["all_stored_activations"]
 
 
@@ -45,3 +57,12 @@ def test_cards_and_reports_declare_population_dependent_inputs(tmp_path) -> None
     assert cfg.geometry_vs_coactivation_path in report_inputs
     assert cfg.decoder_residual_pc_alignment_path in report_inputs
     assert cfg.lineage_path in report_inputs
+
+
+def test_inspection_plan_matches_optional_inputs_and_generated_outputs(tmp_path) -> None:
+    cfg = _config(tmp_path)
+    inspection = _step_artifacts(cfg)["inspection"]
+
+    assert cfg.coactivation_pairs_path not in inspection["inputs"]
+    assert cfg.inspection_report_md_path in inspection["outputs"]
+    assert cfg.inspection_report_json_path in inspection["outputs"]
