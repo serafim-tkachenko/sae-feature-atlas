@@ -121,13 +121,13 @@ def _step_artifacts(cfg: ExperimentConfig) -> dict[str, dict[str, list[Path]]]:
                 cfg.token_metadata_path,
                 cfg.top_examples_path,
                 cfg.analysis_features_path,
-                cfg.coactivation_pairs_path,
                 *lineage,
             ],
             "outputs": [
                 cfg.inspection_feature_summaries_path,
                 cfg.inspection_pair_summaries_path,
                 cfg.inspection_report_md_path,
+                cfg.inspection_report_json_path,
             ],
         },
         "space": {
