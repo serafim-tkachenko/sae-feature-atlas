@@ -51,3 +51,10 @@ models/
 # Python packaging/build artifacts
 *.egg-info/
 src/*.egg-info/
+
+# Scientific run inputs and temporary rendering/validation files
+data/processed/**/source_texts.jsonl
+data/processed/**/environment_freeze.txt
+data/processed/**/collection_source.py
+tmp/
+reports/colab_lock_smoke/
