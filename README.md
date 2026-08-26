@@ -36,9 +36,28 @@ PCA and UMAP are hypothesis-generation aids, not evidence of semantic axes or cl
 
 ## Research direction
 
-**Hypothesis / planned experiment -- not a current finding:** some SAE latents may not have a single activation-invariant contextual identity. Conditioning on activation magnitude may reveal distinct coactivation neighborhoods or semantic context distributions that are hidden by assigning one global description to the latent.
+**Research hypothesis:** some SAE latents may not have a single activation-invariant contextual identity. Conditioning on activation magnitude may reveal distinct coactivation neighborhoods or semantic context distributions that are hidden by assigning one global description to the latent.
 
-The next tests may include posterior-confident regime membership, frequency/support-matched controls, permutation or null baselines, regime-conditioned coactivation, representative contexts, annotation from empirical evidence, held-out evaluation, top-k sensitivity, and replication across SAE/model/layer configurations if the initial signal is real.
+The document-held-out experiment now implements posterior-confident regimes,
+raw-membership neighborhood comparisons, conditional permutation nulls, BH/BY
+correction, matched controls, document-bootstrap uncertainty and representative
+contexts. A real 1,000-document all-positive Gemma 3 1B pilot found conditional
+relational evidence for 22/24 selected features; 5/24 passed a one-observation-per-
+document sensitivity. Six exploratory weak-separation control pairs did not show
+consistent candidate superiority. These findings do not establish semantic polysemy.
+
+Read the [scientific report](reports/gemma1b_regimes_positive/scientific_report.md)
+and [protocol, estimands and reproduction instructions](docs/scientific_experiment.md).
+The [Colab notebook](notebooks/gemma_activation_regimes.ipynb) runs the full
+experiment in a pinned isolated environment, with optional Drive checkpoints.
+
+```bash
+uv run python -m sae_feature_atlas.scientific.run --stage all --run-name gemma1b_regimes_replication
+```
+
+The report and analysis bundle retain a failed strict-BIC control arm separately
+from the exploratory weak-separation amendment. Blinded semantic annotation,
+independent corpus/model/SAE replication and causal interventions remain future work.
 
 ## Installation and first run
 

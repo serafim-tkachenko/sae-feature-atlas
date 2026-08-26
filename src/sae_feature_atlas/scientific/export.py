@@ -11,7 +11,9 @@ def source_archive(path="outputs/sae_feature_atlas_source.zip"):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     roots = ["src", "tests", "scripts", "docs", "notebooks", "requirements"]
-    files = [Path(f) for f in ["README.md", "pyproject.toml", "uv.lock", ".gitignore"]]
+    files = [
+        Path(f) for f in ["README.md", "pyproject.toml", "uv.lock", ".gitignore", ".gitattributes"]
+    ]
     for root in roots:
         files += [p for p in Path(root).rglob("*") if p.is_file() and "__pycache__" not in p.parts]
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
