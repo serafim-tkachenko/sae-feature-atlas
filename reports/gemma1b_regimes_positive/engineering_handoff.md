@@ -4,6 +4,12 @@ The scientific paper is `scientific_report.pdf`, with editable Markdown and
 publication-quality figures alongside it. The experiment was actually run on a
 local RTX 3080 Ti, not only prepared for Colab.
 
+The main report has been rewritten for the research group, following the
+motivation-method-results-interpretation structure of the author's
+`qm9-egnn-tda` project. It is a six-page narrative with two focused figures.
+Detailed parameter settings, software provenance and implementation discussion
+are retained separately in `technical_appendix.md` and the manifest.
+
 ## Result and limits
 
 1,000 documents; 234,018 collected tokens; 181,133 eligible tokens; 11,640,733
@@ -89,6 +95,7 @@ Created:
 - `src/sae_feature_atlas/scientific/robustness.py`
 - `src/sae_feature_atlas/scientific/run.py`
 - `src/sae_feature_atlas/scientific/report.py`
+- `src/sae_feature_atlas/scientific/narrative.py`
 - `src/sae_feature_atlas/scientific/export.py`
 - `tests/test_scientific_regimes.py`
 - `scripts/build_scientific_notebook.py`
@@ -99,8 +106,9 @@ Created:
 - `requirements/colab.lock`
 - `docs/scientific_experiment.md`
 
-Curated report artifacts: the paper in Markdown/PDF, this handoff, ten PNG/PDF
-figures, and four numeric CSV result tables. Large raw data remain in the local
+Curated report artifacts: the main report in Markdown/PDF, the technical
+supplement in Markdown, this handoff, fourteen PNG/PDF figures, and four numeric
+CSV result tables. Large raw data remain in the local
 analysis bundle rather than Git.
 
 ## Commit and PR structure
@@ -111,6 +119,7 @@ Four commits separate collection/provenance, statistical methods/tests,
 Colab/reproducible export, and scientific findings/presentation. Commit dates are
 distributed between the previous commit and tonight as requested. Experimental
 checkpoint timestamps and manifest generation times retain actual provenance.
+The subsequent report revision is a separate presentation commit on the same branch.
 
 For the later PR, reviewers should examine the statistical estimands and null
 assumptions first, then data lineage and runtime validation, then results and

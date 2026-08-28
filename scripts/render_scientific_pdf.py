@@ -26,11 +26,11 @@ def render(source, destination=None):
     source = Path(source)
     destination = Path(destination) if destination else source.with_suffix(".pdf")
     fonts = [Path("/usr/share/fonts/truetype/dejavu"), Path("C:/Windows/Fonts")]
-    regular, bold = "Helvetica", "Helvetica-Bold"
+    regular, bold = "Times-Roman", "Times-Bold"
     for path in fonts:
         for normal, strong in [
-            ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf"),
-            ("arial.ttf", "arialbd.ttf"),
+            ("DejaVuSerif.ttf", "DejaVuSerif-Bold.ttf"),
+            ("times.ttf", "timesbd.ttf"),
         ]:
             if (path / normal).exists():
                 pdfmetrics.registerFont(TTFont("Paper", str(path / normal)))
@@ -51,8 +51,8 @@ def render(source, destination=None):
         ParagraphStyle(
             name="PaperBody",
             fontName=regular,
-            fontSize=9.2,
-            leading=13.4,
+            fontSize=10.5,
+            leading=14.2,
             spaceAfter=8,
             alignment=TA_LEFT,
         )
@@ -68,12 +68,17 @@ def render(source, destination=None):
             backColor=colors.HexColor("#f6f8fa"),
         )
     )
-    styles.add(ParagraphStyle(name="Cell", fontName=regular, fontSize=6.5, leading=8.5))
+    styles.add(ParagraphStyle(name="Cell", fontName=regular, fontSize=8.3, leading=10))
+    styles.add(
+        ParagraphStyle(
+            name="Reference", parent=styles["PaperBody"], fontSize=9, leading=11, spaceAfter=5
+        )
+    )
     for key, size in [("Title", 24), ("Heading1", 14), ("Heading2", 11)]:
         styles[key].fontName = bold
         styles[key].fontSize = size
         styles[key].leading = size * 1.25
-        styles[key].textColor = colors.HexColor("#174e63")
+        styles[key].textColor = colors.HexColor("#202b33")
         styles[key].spaceBefore = 13
         styles[key].spaceAfter = 8
         styles[key].keepWithNext = True
@@ -84,13 +89,17 @@ def render(source, destination=None):
         s = escape(s)
         s = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2" color="#176b87">\1</a>', s)
         s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+        s = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", s)
         return re.sub(r"`([^`]+)`", r"\1", s)
 
     story, lines, i = [], source.read_text(encoding="utf-8").splitlines(), 0
     width = 504
+    references = False
     while i < len(lines):
         line = lines[i].strip()
         i += 1
+        if line == "## References":
+            references = True
         if not line:
             continue
         if line.startswith("!["):
@@ -153,7 +162,11 @@ def render(source, destination=None):
             style = styles["Heading2"]
             line = line[4:]
         else:
-            style = styles["PaperQuote"] if line.startswith("> ") else styles["PaperBody"]
+            style = (
+                styles["PaperQuote"]
+                if line.startswith("> ")
+                else styles["Reference" if references else "PaperBody"]
+            )
             line = line.removeprefix("> ")
             if line.startswith("**"):
                 style = ParagraphStyle(name="EvidenceLabel", parent=style, keepWithNext=True)
@@ -162,9 +175,7 @@ def render(source, destination=None):
     def page(canvas, doc):
         canvas.setFont(regular, 7)
         canvas.setFillColor(colors.HexColor("#647887"))
-        canvas.drawString(
-            54, 28, "Activation magnitude and SAE neighborhood structure | Research pilot"
-        )
+        canvas.drawString(54, 28, "SAE features and activation strength")
         canvas.drawRightString(558, 28, str(doc.page))
 
     doc = SimpleDocTemplate(
@@ -174,7 +185,7 @@ def render(source, destination=None):
         rightMargin=54,
         topMargin=42,
         bottomMargin=48,
-        title="Activation magnitude and SAE neighborhood structure",
+        title=source.read_text(encoding="utf-8").splitlines()[0].removeprefix("# "),
         author="Research team",
     )
     doc.build(story, onFirstPage=page, onLaterPages=page)

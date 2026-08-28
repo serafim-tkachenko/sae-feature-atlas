@@ -90,6 +90,10 @@ source hashes and runtime provenance are saved under the run data directory.
 The main report, PDF, figures, CSV tables and blind annotation sheet are under
 reports/<run_name>. Strict, exploratory weak-control, and one-per-document
 results have separate artifact names. Figures retain PDF vector versions.
+The main report follows the narrative style of the author's QM9 geometry/topology
+project. The detailed report and provenance discussion are generated separately
+as technical_appendix.md, so the group-facing report remains focused on the
+question, evidence and interpretation.
 
 The partner estimand is conditional positive membership. JS normalizes partner
 occurrence counts to sum one; conditional L1 and signed mass change retain

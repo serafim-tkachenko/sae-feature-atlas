@@ -525,5 +525,7 @@ The machine-readable experiment manifest records Git SHA and dirty state, code h
             "![Candidate effects and null baselines](figures/candidate_effects.png)", ""
         )
     text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
-    (dest / "scientific_report.md").write_text(text, encoding="utf-8")
-    return dest / "scientific_report.md"
+    (dest / "technical_appendix.md").write_text(text, encoding="utf-8")
+    from sae_feature_atlas.scientific.narrative import write_research_report
+
+    return write_research_report(cfg, rcfg)
