@@ -58,3 +58,5 @@ data/processed/**/environment_freeze.txt
 data/processed/**/collection_source.py
 tmp/
 reports/colab_lock_smoke/
+# Prepared foundation corpora and GPU data are distributed as artifacts.
+data/raw/foundation*/

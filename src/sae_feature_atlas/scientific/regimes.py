@@ -216,7 +216,9 @@ def _strata(frame, cfg, kind):
     return list(f.groupby(keys, sort=True).indices.values())
 
 
-def analyze_feature(frame, matrix, feature_id, cfg, *, target_sizes=None):
+def analyze_feature(
+    frame, matrix, feature_id, cfg, *, target_sizes=None, null_kinds=("document", "token_identity")
+):
     """Evaluate a frozen assignment on held-out observations only."""
     rng = np.random.default_rng(np.random.SeedSequence([cfg.seed, int(feature_id)]))
     selected = frame[frame.regime >= 0].copy()
@@ -254,7 +256,9 @@ def analyze_feature(frame, matrix, feature_id, cfg, *, target_sizes=None):
     if not np.isfinite(metrics["js_bits"]):
         return {**base, "status": "no_supported_partner_distribution"}, [], [], frame
     nulls = []
-    for kind in ("document", "token_identity"):
+    if not null_kinds or set(null_kinds) - {"document", "token_identity"}:
+        raise ValueError("Unknown or empty permutation null family.")
+    for kind in null_kinds:
         strata = _strata(selected, cfg, kind)
         movable = sum(len(i) for i in strata if len(np.unique(labels[i])) == 2)
         values = []
@@ -311,7 +315,8 @@ def analyze_feature(frame, matrix, feature_id, cfg, *, target_sizes=None):
         js_bootstrap_percentile_low=ci[0],
         js_bootstrap_percentile_high=ci[1],
         bootstrap_valid=len(finite_ci),
-        null_excess=metrics["js_bits"] - base["document_null_mean"],
+        null_excess=metrics["js_bits"] - base[f"{null_kinds[0]}_null_mean"],
+        null_excess_kind=null_kinds[0],
     )
     edges = []
     for r, counts, n in [("low", lo, ns[0]), ("high", hi, ns[1])]:
@@ -363,8 +368,19 @@ def run_regimes(acts, tokens, support, cfg, output_dir, *, storage_mode="positiv
     acts = acts.merge(tokens[TOKEN_KEY + ["token_index"]], on=TOKEN_KEY, validate="many_to_one")
     docs = np.sort(tokens.text_id.unique())
     rng = np.random.default_rng(cfg.seed)
-    discovery = set(rng.permutation(docs)[: int(len(docs) * cfg.discovery_fraction)])
-    tokens["split"] = np.where(tokens.text_id.isin(discovery), "discovery", "evaluation")
+    if "split" in tokens:
+        if not tokens.split.isin(["discovery", "evaluation"]).all():
+            raise ValueError("Unknown frozen document split.")
+        if tokens.groupby("text_id").split.nunique().max() != 1:
+            raise ValueError("A document crosses discovery/evaluation splits.")
+        discovery = set(tokens.loc[tokens.split == "discovery", "text_id"].unique())
+        if not discovery or len(discovery) == len(docs):
+            raise ValueError("Both frozen document splits must be nonempty.")
+        split_method = "prepared corpus document split"
+    else:
+        discovery = set(rng.permutation(docs)[: int(len(docs) * cfg.discovery_fraction)])
+        tokens["split"] = np.where(tokens.text_id.isin(discovery), "discovery", "evaluation")
+        split_method = "seeded random document split"
     tokens.to_parquet(output / "regime_token_population.parquet", index=False)
     train = acts[acts.text_id.isin(discovery)]
     counts = train.groupby("feature_id").agg(n=("activation", "size"), nd=("text_id", "nunique"))
@@ -400,6 +416,7 @@ def run_regimes(acts, tokens, support, cfg, output_dir, *, storage_mode="positiv
     matches.to_parquet(output / "regime_matched_controls.parquet", index=False)
     info = {
         "config": asdict(cfg),
+        "split_method": split_method,
         "eligible_discovery_features": len(eligible),
         "screened_features": len(fits),
         "selected_candidates": len(candidates),

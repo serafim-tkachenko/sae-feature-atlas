@@ -178,3 +178,12 @@ def test_end_to_end_split_schema_and_determinism(tmp_path):
     assert info["selected_candidates"] == 0
     assert pd.read_parquet(empty_dir / "regime_neighborhood_comparison.parquet").empty
     assert "regime" in pd.read_parquet(empty_dir / "regime_assignments.parquet")
+    frozen = token.assign(split=np.where(token.text_id < 50, "discovery", "evaluation"))
+    frozen_dir = tmp_path / "frozen"
+    run_regimes(acts, frozen, support, cfg, frozen_dir)
+    saved = pd.read_parquet(frozen_dir / "regime_token_population.parquet")
+    assert set(saved.loc[saved.split == "discovery", "text_id"]) == set(range(50))
+    invalid = frozen.copy()
+    invalid.loc[0, "split"] = "evaluation"
+    with pytest.raises(ValueError, match="crosses"):
+        run_regimes(acts, invalid, support, cfg, tmp_path / "invalid")

@@ -16,7 +16,7 @@ from sae_feature_atlas.analysis.bimodality import compute_bimodality
 from sae_feature_atlas.scientific.regimes import assign_regimes, analyze_feature, match_controls
 
 
-def weak_controls(cfg, rcfg, pool_size=2048):
+def weak_controls(cfg, rcfg, pool_size=2048, *, prospective=False):
     root = cfg.run_data_dir
     from sae_feature_atlas.scientific.regimes import require_regime_config
 
@@ -68,14 +68,22 @@ def weak_controls(cfg, rcfg, pool_size=2048):
     weak = (proxy.fit_status == "ok") & (proxy.mode_separation < rcfg.min_separation)
     proxy["delta_bic"] = np.where(weak, 0.0, 100.0)
     matches = match_controls(proxy, candidates, rcfg.match_log_caliper)
-    matches["control_definition"] = "exploratory_converged_separation_below_2"
+    matches["control_definition"] = (
+        "prespecified_converged_separation_below_2"
+        if prospective
+        else "exploratory_converged_separation_below_2"
+    )
     matches.to_parquet(root / "regime_weak_matched_controls.parquet", index=False)
     design = {
         "pool_size": pool_size,
         "additional_features_fitted": len(extra),
         "seed": rcfg.seed + 1,
         "definition": "converged GMM, standardized separation <2",
-        "amendment": "Added after zero strict-BIC discovery support matches; exploratory arm.",
+        "amendment": (
+            "Prespecified in the foundation protocol before this run's evaluation."
+            if prospective
+            else "Added after zero strict-BIC discovery support matches; exploratory arm."
+        ),
         "matching": "original log-support/log-document caliper, no replacement",
         "evaluation": "same frozen discovery tail fractions; exact candidate regime counts",
         "strict_control_arm_preserved": True,

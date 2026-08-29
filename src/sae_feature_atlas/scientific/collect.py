@@ -32,19 +32,31 @@ def sha256(path):
     return h.hexdigest()
 
 
-def configuration(run_name="gemma1b_regimes_positive", max_texts=1000, max_seq_len=256):
+def configuration(
+    run_name="gemma1b_regimes_positive",
+    max_texts=1000,
+    max_seq_len=256,
+    *,
+    model="gemma-3-1b-pt",
+    layer=13,
+    width="16k",
+    l0="medium",
+    corpus="pile-10k",
+):
     return make_config(
         run_name=run_name,
         max_texts=max_texts,
         max_seq_len=max_seq_len,
         activation_mode="positive",
-        layer=13,
-        width="16k",
-        l0="medium",
+        model=model,
+        layer=layer,
+        width=width,
+        l0=l0,
+        corpus=corpus,
     )
 
 
-def collect(cfg, chunk_size=25):
+def collect(cfg, chunk_size=25, *, corpus_path=None, local_files_only=False):
     """Save each completed chunk; reruns require identical collection provenance.
 
     Native HF layer output avoids coordinate-changing TransformerLens weight
@@ -54,6 +66,11 @@ def collect(cfg, chunk_size=25):
         raise RuntimeError("A CUDA GPU is required for the real experiment.")
     if cfg.collection.activation_mode != "positive":
         raise ValueError("Fresh scientific collection requires all-positive storage.")
+    if cfg.model.site != "resid_post":
+        raise ValueError("Scientific collection currently supports resid_post only.")
+    if corpus_path is None and cfg.collection.corpus != "pile-10k":
+        raise ValueError("A non-Pile corpus requires an explicit prepared corpus_path.")
+    corpus_hash = sha256(corpus_path) if corpus_path is not None else None
     torch.manual_seed(cfg.collection.random_seed)
     np.random.seed(cfg.collection.random_seed)
     torch.backends.cuda.matmul.allow_tf32 = False
@@ -68,6 +85,10 @@ def collect(cfg, chunk_size=25):
         provenance = json.loads(metadata_path.read_text())
         if provenance["collection"] != asdict(cfg.collection):
             raise ValueError("Collection settings changed: use a new run name.")
+        if provenance["model"] != asdict(cfg.model):
+            raise ValueError("Model/SAE settings changed: use a new run name.")
+        if provenance.get("prepared_corpus_sha256") != corpus_hash:
+            raise ValueError("Prepared corpus changed: use a new run name.")
         if provenance["collector_sha256"] != sha256(__file__) and list(chunks.glob("*.done.json")):
             raise ValueError("Collector code changed: use a new run name.")
         provenance["collector_sha256"] = sha256(__file__)
@@ -75,10 +96,13 @@ def collect(cfg, chunk_size=25):
         provenance = {
             "collection_started_at_utc": datetime.now(timezone.utc).isoformat(),
             "model_revision": api.model_info(cfg.model.model_name).sha,
-            "sae_repo": "google/gemma-scope-2-1b-pt",
-            "sae_revision": api.model_info("google/gemma-scope-2-1b-pt").sha,
-            "dataset": "NeelNanda/pile-10k",
-            "dataset_revision": api.dataset_info("NeelNanda/pile-10k").sha,
+            "sae_repo": cfg.model.model_name.replace("gemma-3-", "gemma-scope-2-"),
+            "sae_revision": api.model_info(
+                cfg.model.model_name.replace("gemma-3-", "gemma-scope-2-")
+            ).sha,
+            "dataset": "prepared-jsonl" if corpus_path else "NeelNanda/pile-10k",
+            "dataset_revision": None if corpus_path else api.dataset_info("NeelNanda/pile-10k").sha,
+            "prepared_corpus_sha256": corpus_hash,
             "collection": asdict(cfg.collection),
             "model": asdict(cfg.model),
             "collector_sha256": sha256(__file__),
@@ -101,7 +125,7 @@ def collect(cfg, chunk_size=25):
                     "huggingface-hub",
                 ]
             },
-            "collection_backend": "native HF AutoModel; layers[13] forward output",
+            "collection_backend": f"native HF text backbone; layers[{cfg.model.layer}] output",
             "model_dtype": "bfloat16",
             "sae_dtype": "float32",
             "corpus_selection": "seeded permutation, unique raw texts >=300 chars; no cleanup",
@@ -114,19 +138,54 @@ def collect(cfg, chunk_size=25):
         )
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        cfg.model.model_name, revision=provenance["model_revision"]
+        cfg.model.model_name,
+        revision=provenance["model_revision"],
+        local_files_only=local_files_only,
     )
-    ds = load_dataset(provenance["dataset"], revision=provenance["dataset_revision"], split="train")
+    if corpus_path:
+        ds = [
+            json.loads(line) for line in Path(corpus_path).read_text().splitlines() if line.strip()
+        ]
+        if len(ds) != cfg.collection.max_texts:
+            raise ValueError("Prepared corpus length must exactly match max_texts.")
+        manifest_path = Path(corpus_path).parent / "corpus_manifest.json"
+        if not manifest_path.exists():
+            raise ValueError("Prepared corpus requires adjacent corpus_manifest.json.")
+        corpus_manifest = json.loads(manifest_path.read_text())
+        if corpus_manifest["texts_sha256"] != corpus_hash:
+            raise ValueError("Prepared corpus does not match its manifest.")
+        if corpus_manifest.get("tokenizer_model", cfg.model.model_name) != cfg.model.model_name:
+            raise ValueError("Corpus audit tokenizer differs from collection model.")
+        if (
+            corpus_manifest.get("tokenizer_revision", provenance["model_revision"])
+            != provenance["model_revision"]
+        ):
+            raise ValueError("Model revision differs from the frozen corpus tokenizer revision.")
+        if (
+            corpus_manifest.get("max_length", cfg.collection.max_seq_len)
+            != cfg.collection.max_seq_len
+        ):
+            raise ValueError("Corpus audit window differs from collection length.")
+        provenance["corpus_selection"] = "prepared manifest; fixed document ordering and splits"
+        write_json(root / "corpus_manifest.json", corpus_manifest)
+    else:
+        ds = load_dataset(
+            provenance["dataset"], revision=provenance["dataset_revision"], split="train"
+        )
     rng = np.random.default_rng(cfg.collection.random_seed)
     texts, seen = [], set()
-    for idx in rng.permutation(len(ds)):
+    for idx in range(len(ds)) if corpus_path else rng.permutation(len(ds)):
         raw = ds[int(idx)]["text"]
         if len(raw) < 300 or raw in seen:
             continue
         seen.add(raw)
-        texts.append(
-            {"text_id": len(texts), "source": "pile-10k", "dataset_row": int(idx), "text": raw}
+        item = (
+            dict(ds[int(idx)])
+            if corpus_path
+            else {"source": "pile-10k", "dataset_row": int(idx), "text": raw}
         )
+        item["text_id"] = len(texts)
+        texts.append(item)
         if len(texts) == cfg.collection.max_texts:
             break
     if len(texts) != cfg.collection.max_texts:
@@ -138,8 +197,11 @@ def collect(cfg, chunk_size=25):
         provenance["sae_repo"], subfolder + "/config.json", revision=provenance["sae_revision"]
     )
     native = json.loads(Path(native_cfg_path).read_text())
-    if native["hf_hook_point_in"] != "model.layers.13.output":
+    expected_hook = f"model.layers.{cfg.model.layer}.output"
+    if native["hf_hook_point_in"] != expected_hook or native["hf_hook_point_out"] != expected_hook:
         raise ValueError("Unexpected SAE hook; revise the collector explicitly.")
+    if native["model_name"] != cfg.model.model_name:
+        raise ValueError("Native SAE model does not match the configured model.")
     # SAE Lens resolves this release to the same pinned snapshot. Verify bytes.
     sae = load_sae(cfg, "cuda")
     from safetensors.torch import load_file
@@ -163,13 +225,19 @@ def collect(cfg, chunk_size=25):
         source_texts_sha256=sha256(cfg.source_texts_path),
     )
     write_json(metadata_path, provenance)
-    model = (
-        AutoModel.from_pretrained(
-            cfg.model.model_name, revision=provenance["model_revision"], dtype=torch.bfloat16
-        )
-        .to("cuda")
-        .eval()
+    model = AutoModel.from_pretrained(
+        cfg.model.model_name,
+        revision=provenance["model_revision"],
+        dtype=torch.bfloat16,
+        local_files_only=local_files_only,
     )
+    # Multimodal Gemma 3 checkpoints wrap the same text backbone. Drop the unused
+    # vision tower before transfer; preserve native text weights and coordinates.
+    if hasattr(model, "language_model"):
+        model = model.language_model
+    if not hasattr(model, "layers"):
+        raise ValueError("Unrecognized native text backbone; refusing a guessed hook.")
+    model = model.to("cuda").eval()
     capture = {}
 
     def hook(_module, _args, output):
@@ -242,6 +310,12 @@ def collect(cfg, chunk_size=25):
                             "token_id": ids,
                             "token_str": strs,
                             "source": item["source"],
+                            **({"split": item["split"]} if "split" in item else {}),
+                            **(
+                                {"duplicate_group": item["duplicate_group"]}
+                                if "duplicate_group" in item
+                                else {}
+                            ),
                         }
                     )
                 )
