@@ -60,3 +60,4 @@ tmp/
 reports/colab_lock_smoke/
 # Prepared foundation corpora and GPU data are distributed as artifacts.
 data/raw/foundation*/
+data/processed/gemma4b_foundation_v1_l*/
