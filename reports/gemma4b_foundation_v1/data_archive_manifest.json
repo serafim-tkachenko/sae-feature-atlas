@@ -1,0 +1,26 @@
+{
+  "foundation_layer17_collection.zip": {
+    "bytes": 2109047516,
+    "sha256": "2c3b4c549f9782e34a56f93f9806607ec92bd75302c5039cd29ce4fa56af7dc1"
+  },
+  "foundation_layer22_collection.zip": {
+    "bytes": 2209788512,
+    "sha256": "9ff9e900c45e1de574e6edf943146e5cd0064309798d0d02ff7af40182691f29"
+  },
+  "foundation_native_residuals.zip": {
+    "bytes": 2108028016,
+    "sha256": "33c866d2d8a39e83ec00f69abb26ff2570ba421ff1df769d0705371bf335561e"
+  },
+  "foundation_analysis.zip": {
+    "bytes": 593524722,
+    "sha256": "81f87644f770f9c53d3fc99cce5d6cd2cf0e9f7f03d94d40600cd78737bf0efd"
+  },
+  "foundation_final_delta.zip": {
+    "bytes": 118128086,
+    "sha256": "acb87477c0fc6c466e5f012086413bfe449f55157a7e583dce1552465f17e7c8"
+  },
+  "foundation_runtime_sources.zip": {
+    "bytes": 528985,
+    "sha256": "5145006a71acfeaf8c7f6aa33be0f7d31a0f79d99b9d5fdb44c0382d746dac95"
+  }
+}

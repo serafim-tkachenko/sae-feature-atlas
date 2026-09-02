@@ -19,6 +19,7 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     KeepTogether,
+    CondPageBreak,
 )
 
 
@@ -93,6 +94,16 @@ def render(source, destination=None):
         return re.sub(r"`([^`]+)`", r"\1", s)
 
     story, lines, i = [], source.read_text(encoding="utf-8").splitlines(), 0
+
+    def kept(block):
+        while (
+            story
+            and isinstance(story[-1], Paragraph)
+            and (story[-1].getKeepWithNext() or story[-1].text.rstrip().endswith(":"))
+        ):
+            block.insert(0, story.pop())
+        return KeepTogether(block)
+
     width = 504
     references = False
     while i < len(lines):
@@ -100,6 +111,7 @@ def render(source, destination=None):
         i += 1
         if line == "## References":
             references = True
+            story.append(CondPageBreak(320))
         if not line:
             continue
         if line.startswith("!["):
@@ -107,8 +119,14 @@ def render(source, destination=None):
             path = source.parent / match[2]
             if path.exists():
                 w, h = ImageReader(str(path)).getSize()
-                story.append(Image(str(path), width=width, height=width * h / w))
-                story.append(Spacer(1, 9))
+                block = [Image(str(path), width=width, height=width * h / w), Spacer(1, 9)]
+                following = i
+                while following < len(lines) and not lines[following].strip():
+                    following += 1
+                if following < len(lines) and re.match(r"Figure \d+\.", lines[following].strip()):
+                    block.append(Paragraph(inline(lines[following].strip()), styles["PaperBody"]))
+                    i = following + 1
+                story.append(kept(block))
             continue
         if line.startswith("|"):
             block = [line]
@@ -148,7 +166,7 @@ def render(source, destination=None):
                 )
             )
             if len(cells) <= 9:
-                story.append(KeepTogether([t, Spacer(1, 10)]))
+                story.append(kept([t, Spacer(1, 10)]))
             else:
                 story.extend([t, Spacer(1, 10)])
             continue

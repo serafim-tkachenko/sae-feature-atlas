@@ -1,2 +1,5 @@
 *.pdf binary
 *.png binary
+# Preserve token-context whitespace and treat generated vector figures as images.
+reports/gemma4b_foundation_v1/annotation/*.csv -whitespace
+reports/gemma4b_foundation_v1/figures/*.svg -diff -whitespace
