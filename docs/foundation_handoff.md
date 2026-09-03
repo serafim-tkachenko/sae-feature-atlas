@@ -12,6 +12,10 @@ completed foundation from a proposed causal follow-up and reviews close recent
 papers. The report's related work needs that update in its next revision; the
 assessment is not a new result or a preregistered experiment.
 
+The [native context-intervention pilot](intervention_pilot.md) implements the
+bounded follow-up, with separate development bundles and numerical constraint
+audits. It does not reuse the original evaluation split as fresh confirmation.
+
 The primary source-specific partner endpoint and the secondary native geometric
 endpoint use different statistics and separate correction families. Their overlap
 is not a separately calibrated joint discovery family. The encoder-covariance

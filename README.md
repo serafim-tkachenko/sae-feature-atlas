@@ -1,6 +1,6 @@
 # SAE Feature Atlas
 
-SAE Feature Atlas is a descriptive research toolkit for studying Gemma Scope sparse-autoencoder (SAE) features. Its central objects are empirical SAE activations, same-token interaction structure, decoder geometry, and reproducible context evidence. It does not currently make causal or validated semantic claims.
+SAE Feature Atlas is a research toolkit for studying Gemma Scope sparse-autoencoder (SAE) features. Its central objects are empirical SAE activations, same-token coactivation, decoder geometry, and reproducible context evidence. It includes descriptive analyses and a development intervention pilot; these do not establish validated semantic mechanisms.
 
 ## 4B foundation experiment
 
@@ -18,6 +18,21 @@ encoder-covariance sensitivity. See the [reproduction guide](docs/foundation_han
 [fixed protocol](docs/foundation_protocol.md), and
 [technical appendix](reports/gemma4b_foundation_v1/technical_appendix.md).
 The earlier 1B experiment below remains a pilot.
+
+## Context intervention development pilot
+
+The [native intervention workflow](docs/intervention_pilot.md) tests context
+directions learned from the foundation activations using constrained four-cell
+interventions, matched directions, normalization diagnostics and development
+prediction checks. The [novelty assessment](docs/novelty_assessment.md) explains
+the proposed contribution and its rejection criteria. These development analyses
+do not constitute fresh confirmation or validated semantic mechanisms.
+
+The completed development report is available as
+[Markdown](reports/context_intervention_pilot_v1/report.md) and
+[PDF](reports/context_intervention_pilot_v1/report.pdf), with six figures and
+the numerical tables. The strongest proposed claim remains unsupported by this
+pilot: raw interaction is more promising than prediction or effects beyond gain.
 
 ## Scientific populations
 
