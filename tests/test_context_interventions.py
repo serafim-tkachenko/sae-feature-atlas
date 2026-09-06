@@ -211,7 +211,8 @@ def test_predictor_detects_context_but_gain_explains_collinear_effects():
                 **{f"pc{k}": 0.0 for k in range(8)},
             )
         )
-    errors = prediction_checks(pd.DataFrame(rows))
+    errors = prediction_checks(pd.DataFrame(rows), include_pc_only=True)
     pooled = errors[errors.train_source == "pooled"].groupby("model").mse.mean()
     assert pooled["context"] < pooled["nuisance"] / 100
     assert pooled["scalar_gain"] == pytest.approx(pooled["context"], rel=1e-8)
+    assert pooled["pc8_context"] < pooled["pc8_only"] / 100

@@ -21,7 +21,7 @@ from sae_feature_atlas.scientific.intervention_math import paired_bootstrap
 from sae_feature_atlas.util.io import write_json
 
 
-def prediction_checks(frame):
+def prediction_checks(frame, include_pc_only=False):
     """Calibrate only on fit documents; check documents remain old development data."""
     rows = []
     base = [
@@ -43,12 +43,15 @@ def prediction_checks(frame):
                 continue
             y_train = np.stack(train.effect)
             y_test = np.stack(test.effect)
-            for name, numeric in [
+            models = [
                 ("nuisance", base),
                 ("context", base + ["context"]),
                 ("pc8_context", base + ["context"] + [f"pc{i}" for i in range(8)]),
                 ("scalar_gain", base + ["context"]),
-            ]:
+            ]
+            if include_pc_only:
+                models.append(("pc8_only", base + [f"pc{i}" for i in range(8)]))
+            for name, numeric in models:
                 transform = ColumnTransformer(
                     [
                         ("numeric", StandardScaler(), numeric),
