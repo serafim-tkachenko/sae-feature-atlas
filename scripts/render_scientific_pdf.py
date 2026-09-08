@@ -72,6 +72,16 @@ def render(source, destination=None):
     styles.add(ParagraphStyle(name="Cell", fontName=regular, fontSize=8.3, leading=10))
     styles.add(
         ParagraphStyle(
+            name="Caption",
+            parent=styles["PaperBody"],
+            fontSize=9,
+            leading=11.5,
+            textColor=colors.HexColor("#42515b"),
+            spaceAfter=10,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
             name="Reference", parent=styles["PaperBody"], fontSize=9, leading=11, spaceAfter=5
         )
     )
@@ -123,8 +133,10 @@ def render(source, destination=None):
                 following = i
                 while following < len(lines) and not lines[following].strip():
                     following += 1
-                if following < len(lines) and re.match(r"Figure \d+\.", lines[following].strip()):
-                    block.append(Paragraph(inline(lines[following].strip()), styles["PaperBody"]))
+                if following < len(lines) and re.match(
+                    r"(?:Figure|Equation) \d+\.", lines[following].strip()
+                ):
+                    block.append(Paragraph(inline(lines[following].strip()), styles["Caption"]))
                     i = following + 1
                 story.append(kept(block))
             continue
@@ -196,7 +208,15 @@ def render(source, destination=None):
         canvas.drawString(54, 28, "SAE features and activation strength")
         canvas.drawRightString(558, 28, str(doc.page))
 
-    doc = SimpleDocTemplate(
+    class OutlinedDocument(SimpleDocTemplate):
+        def afterFlowable(self, flowable):
+            if isinstance(flowable, Paragraph) and flowable.style.name == "Heading1":
+                key = f"section-{len(self._section_keys)}"
+                self._section_keys.append(key)
+                self.canv.bookmarkPage(key)
+                self.canv.addOutlineEntry(flowable.getPlainText(), key, level=0)
+
+    doc = OutlinedDocument(
         str(destination),
         pagesize=(612, 792),
         leftMargin=54,
@@ -206,6 +226,7 @@ def render(source, destination=None):
         title=source.read_text(encoding="utf-8").splitlines()[0].removeprefix("# "),
         author="Research team",
     )
+    doc._section_keys = []
     doc.build(story, onFirstPage=page, onLaterPages=page)
     print(destination)
     return destination

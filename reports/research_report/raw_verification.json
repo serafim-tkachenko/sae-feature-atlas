@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "prompts": 96,
+  "factorial_comparisons": 5376,
+  "fit_check_groups_disjoint": true,
+  "max_constraint_error": 1.4034919612098231e-06,
+  "cases_without_next_token_target": 1,
+  "reason_missing_target": "Position is last token of the frozen 512-token collection window",
+  "complete_sha256": "986b117f86e60452a9ee9838e236c3e67fa71a25be002633061635257cb0eabf"
+}

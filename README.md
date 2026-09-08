@@ -2,6 +2,21 @@
 
 SAE Feature Atlas is a research toolkit for studying Gemma Scope sparse-autoencoder (SAE) features. Its central objects are empirical SAE activations, same-token coactivation, decoder geometry, and reproducible context evidence. It includes descriptive analyses and a development intervention pilot; these do not establish validated semantic mechanisms.
 
+## Complete Phase 1 report
+
+The self-contained report **From activation geometry to context-dependent effects**
+is available in [Markdown](reports/research_report/report.md) and
+[PDF](reports/research_report/report.pdf). It integrates the 4B foundation study,
+the native intervention pilot, signed-response analysis and an incremental
+prediction check against a PC-only baseline. It includes research questions,
+mathematical methods, 27 figures, 17 equations, limitations and a Phase 2 plan.
+
+The current result is reproducible contextual organization in selected entries,
+with local intervention modulation but no established transferable selective
+mechanism. The new analyses use saved responses and require no model rerun.
+See [report reproduction and Phase 2 handoff](docs/research_report_handoff.md).
+Earlier reports below are retained as historical study snapshots.
+
 ## 4B foundation experiment
 
 The [group report](reports/gemma4b_foundation_v1/scientific_report.pdf) studies
