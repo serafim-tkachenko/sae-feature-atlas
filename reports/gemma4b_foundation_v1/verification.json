@@ -1,0 +1,28 @@
+[
+  {
+    "layer": 17,
+    "sample_keys_and_labels_match": true,
+    "conjunctions_and_BY_recomputed": true,
+    "numerical_ties_checked": true,
+    "encoder_diagnostic_recomputed": true,
+    "replay_membership_audit_passed": true,
+    "secondary_controls_complete": true,
+    "weak_control_pairs": 4,
+    "residual_chunks_verified": 480,
+    "native_locations": 214268,
+    "frozen_targets_sha256": "3f7a54c9d0f9249df6e507e5f4630cc954bf24575d78fb1a29ec0f8e0583372d"
+  },
+  {
+    "layer": 22,
+    "sample_keys_and_labels_match": true,
+    "conjunctions_and_BY_recomputed": true,
+    "numerical_ties_checked": true,
+    "encoder_diagnostic_recomputed": true,
+    "replay_membership_audit_passed": true,
+    "secondary_controls_complete": true,
+    "weak_control_pairs": 4,
+    "residual_chunks_verified": 480,
+    "native_locations": 196158,
+    "frozen_targets_sha256": "9ee11f222a945a15d4068854fda57b7171c170622fef68ff9516d282ace4cef0"
+  }
+]

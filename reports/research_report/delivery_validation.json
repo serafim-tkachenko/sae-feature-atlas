@@ -1,0 +1,11 @@
+{
+  "pdf_pages": 37,
+  "figures": 27,
+  "equations": 17,
+  "references": 17,
+  "tests_passed": 62,
+  "visual_review": "All 37 final pages reviewed; unchanged pages verified pixel-identical to earlier reviewed rendering. Figure labels and equations readable.",
+  "new_model_executions": 0,
+  "scientific_status": "Phase 1 complete; stronger transferable selective-mechanism claim remains unestablished",
+  "original_prediction_errors_reproduced": true
+}

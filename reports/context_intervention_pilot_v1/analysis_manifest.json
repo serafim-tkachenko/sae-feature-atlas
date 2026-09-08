@@ -1,0 +1,8 @@
+{
+  "status": "development only",
+  "prompts": 96,
+  "factorial_comparisons": 5376,
+  "max_constraint_error": 1.4034919612098231e-06,
+  "source_complete_sha256": "986b117f86e60452a9ee9838e236c3e67fa71a25be002633061635257cb0eabf",
+  "analysis_sha256": "be4c0e6dfe5a5f08f3b03fb0403436461785d7ed50542e07933453eb4ca9315e"
+}

@@ -1,0 +1,8 @@
+{
+  "pdf_pages": 8,
+  "figures": 6,
+  "tests_passed": 60,
+  "visual_review": "All eight final pages inspected; labels, equations, tables and captions readable.",
+  "scientific_status": "Development hypothesis not established",
+  "gpu_runtime": "Terminated after verified local archive"
+}

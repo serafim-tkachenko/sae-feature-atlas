@@ -1,0 +1,19 @@
+{
+  "status": "development pilot; not fresh confirmation",
+  "layer": 17,
+  "features": [1645, 28027, 7087, 2966],
+  "seed": 20260908,
+  "fit_fraction": 0.65,
+  "prompts_per_feature_source_split": 8,
+  "minimum_overlap": 20,
+  "decoder_doses": [-0.1, 0.1],
+  "context_lengths": [0.005, 0.01],
+  "random_directions": 3,
+  "readouts": [
+    {"name": "digit_vs_punctuation", "positive": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], "negative": [",", ".", ";"]},
+    {"name": "common_word_start_vs_suffix", "positive": [" the", " and", " of"], "negative": ["ing", "tion", "ly"]}
+  ],
+  "readout_interpretation": "Mean token-logit contrasts for numerical and word-boundary formatting diagnostics, not validated semantic behaviors. Token sets overlap neither within nor between the two contrasts.",
+  "precision": "float32; TF32 disabled",
+  "relative_constraint_tolerance": 0.00001
+}

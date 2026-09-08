@@ -1,0 +1,11 @@
+{
+  "status": "observational foundation plus development intervention and exploratory reanalysis",
+  "figures": 27,
+  "equations": 17,
+  "words": 10733,
+  "builder_sha256": "7166188a41dcda2836a46bdb952231bfe8a8f48f5af262b6866e528e1fb80eab",
+  "source_reports": [
+    "reports/gemma4b_foundation_v1",
+    "reports/context_intervention_pilot_v1"
+  ]
+}

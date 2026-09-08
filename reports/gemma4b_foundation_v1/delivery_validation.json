@@ -1,0 +1,12 @@
+{
+  "verified_at_utc": "2026-09-08T00:12:52.816530+00:00",
+  "pdf_pages": 21,
+  "numbered_figures": 20,
+  "equations": 9,
+  "references": 14,
+  "tests_passed": 52,
+  "focused_ruff": "passed",
+  "main_narrative_contains_no_commit_or_artifact_hashes": true,
+  "all_figure_paths_exist": true,
+  "colab_runtime": "terminated after archive checksum verification"
+}
