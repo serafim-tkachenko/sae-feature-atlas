@@ -22,13 +22,10 @@ wandb/
 runs/
 
 # Generated data artifacts
-data/raw/*.jsonl
-data/raw/*.json
-data/raw/*.txt
-data/processed/**/*.parquet
-data/processed/**/*.npy
-data/processed/**/*.csv
-data/processed/**/*.json
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
 
 # Generated reports: commit only curated report snippets manually
 reports/**/*.json
@@ -52,15 +49,9 @@ models/
 *.egg-info/
 src/*.egg-info/
 
-# Scientific run inputs and temporary rendering/validation files
-data/processed/**/source_texts.jsonl
-data/processed/**/environment_freeze.txt
-data/processed/**/collection_source.py
+# Temporary files
 tmp/
-reports/colab_lock_smoke/
-# Prepared foundation corpora and GPU data are distributed as artifacts.
-data/raw/foundation*/
-data/processed/gemma4b_foundation_v1_l*/
 
+# Build outputs
 build/
 dist/

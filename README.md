@@ -2,8 +2,6 @@
 
 A Python toolkit and CLI for collecting and inspecting sparse-autoencoder activations. It provides explicit token populations, feature statistics, coactivation, decoder geometry, decoded context evidence and reproducible artifact lineage.
 
-**Research studies have moved to [Model Behavior Research](https://github.com/serafim-tkachenko/model-behavior-research).** That repository contains study reports, experiment runners, notebooks, numerical evidence and coding-forensics pilots. This repository owns the reusable library and its user documentation.
-
 ## Install
 
 Python 3.10–3.12 is supported by the package; validation is performed on Python 3.11. Model collection requires a compatible PyTorch device and access to the selected model/SAE. Analysis of saved artifacts can run on CPU.
