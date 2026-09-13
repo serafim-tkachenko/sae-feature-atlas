@@ -27,13 +27,8 @@ data/raw/**
 data/processed/**
 !data/processed/.gitkeep
 
-# Generated reports: commit only curated report snippets manually
-reports/**/*.json
-reports/**/plots/
-reports/**/tables/
-reports/**/index.html
-# Remove for manual reports later
-reports/**/*.md
+# Generated reports
+reports/
 
 # Large local outputs
 outputs/
