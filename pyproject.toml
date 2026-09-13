@@ -1,8 +1,14 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sae-feature-atlas"
-version = "0.3.0"
+version = "0.4.0"
 description = "Research toolkit for building SAE feature atlases over Gemma Scope models."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.13"
 authors = [
     { name = "Serafim Tkachenko" }
@@ -26,6 +32,11 @@ dependencies = [
     "matplotlib",
     "huggingface-hub",
 ]
+
+[project.urls]
+Repository = "https://github.com/serafim-tkachenko/sae-feature-atlas"
+Documentation = "https://github.com/serafim-tkachenko/sae-feature-atlas/tree/main/docs"
+Research = "https://github.com/serafim-tkachenko/model-behavior-research"
 
 [dependency-groups]
 dev = [

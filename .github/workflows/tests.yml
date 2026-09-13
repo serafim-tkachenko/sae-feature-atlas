@@ -1,0 +1,17 @@
+name: tests
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.28"
+          enable-cache: true
+      - run: uv sync --locked --python 3.11
+      - run: uv run pytest -q
+      - run: uv run python -m compileall -q src
+      - run: uv build
