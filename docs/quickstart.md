@@ -7,7 +7,7 @@ This page shows the fastest path from a clean checkout to a small research run.
 ```bash
 git clone https://github.com/serafim-tkachenko/sae-feature-atlas.git
 cd sae-feature-atlas
-uv sync
+uv sync --locked
 uv run hf auth login
 ```
 
@@ -39,7 +39,7 @@ uv run sae-atlas smoke-test \
 
 ```bash
 uv run sae-atlas plan \
-  --preset research \
+  --preset atlas \
   --model gemma-3-1b-pt \
   --layer 13 \
   --corpus mixed-broad \
@@ -56,7 +56,7 @@ SAE, corpus, steps, and output directories.
 
 ```bash
 uv run sae-atlas run \
-  --preset research \
+  --preset atlas \
   --model gemma-3-1b-pt \
   --layer 13 \
   --corpus mixed-broad \
@@ -93,7 +93,15 @@ cards = run.feature_cards()
 bimodal_examples = run.bimodal_peak_examples()
 ```
 
-## Recommended scaling path
+To inspect a saved run from the terminal without loading weights:
+
+```bash
+uv run python examples/inspect_run.py data/processed/<run_name> --feature 1645
+```
+
+Choose an ID from your run; IDs refer to entries in a particular SAE dictionary.
+
+## Scaling a run
 
 1. `mixed-broad`, `max_texts=50`, `max_seq_len=128`, `top_k=32`
 2. `mixed-broad`, `max_texts=300`, `max_seq_len=256`, `top_k=32`
