@@ -25,6 +25,21 @@ concentration, suspicious coactivation pairs, and features worth manual review.
 
 ## Manual inspection commands
 
+Start with the saved run's data directory to list artifact availability and,
+optionally, a feature's saved card and top examples:
+
+```bash
+uv run sae-atlas inspect-run data/processed/<run_name>
+uv run sae-atlas inspect-run data/processed/<run_name> --feature 1645 --examples 5
+```
+
+This command reads saved tables without importing the model runtime. It also
+works on partial runs: missing optional tables produce a message. The example
+script `examples/inspect_run.py` and notebook-friendly `AtlasRun` API remain
+available for the same workflow.
+
+For detailed feature, pair, or activation-regime contexts:
+
 ```bash
 uv run sae-atlas inspect-feature --run-name <run> --feature-id <id> --n 10
 uv run sae-atlas inspect-pair --run-name <run> --feature-i <id1> --feature-j <id2> --n 10

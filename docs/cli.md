@@ -28,3 +28,17 @@ uv run sae-atlas run --steps features,coactivation,geometry
 `coverage` remains the CLI step name for compatibility but produces the diagnostic `decoder_residual_pc_alignment.parquet` artifact.
 
 Non-collection steps fail when lineage is missing or incompatible. After an analysis-policy change, rerun `features` before downstream steps so all population-dependent outputs share the new fingerprint.
+
+Inspect a saved run by its data directory:
+
+```bash
+uv run sae-atlas inspect-run data/processed/<run_name>
+uv run sae-atlas inspect-run data/processed/<run_name> --feature 1645 --examples 5
+```
+
+`inspect-run` is read-only and does not load model weights or import the model runtime.
+It lists artifact availability; `--feature` also prints the saved feature card and
+highest-activation examples. Choose a feature ID from your run. `--examples` must
+be a positive integer (default: 5). Missing optional tables are reported without
+failing. Either activation file may be absent, depending on the collection mode.
+Use an absolute directory path to inspect a run from outside the project.

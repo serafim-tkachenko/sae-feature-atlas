@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `sae-atlas inspect-run <run_dir>` for read-only artifact inventory and optional feature cards and examples, without importing the model runtime.
+
 ## 0.4.0 — 2026-09-13
 
 - Remove study-specific modules, execution notebooks and report snapshots from the toolkit distribution.

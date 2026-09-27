@@ -5,7 +5,6 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from sae_feature_atlas.config.datasets import describe_corpus, list_supported_corpora
 from sae_feature_atlas.config.registry import list_supported_models, make_config
 from sae_feature_atlas.config.schema import ExperimentConfig
 from sae_feature_atlas.inspection.commands import (
@@ -13,10 +12,7 @@ from sae_feature_atlas.inspection.commands import (
     print_feature_examples,
     print_pair_examples,
 )
-from sae_feature_atlas.pipeline.runner import run_pipeline
 from sae_feature_atlas.pipeline.steps import ALL_STEPS, STEP_PRESETS, normalize_steps
-from sae_feature_atlas.report.markdown import write_report
-from sae_feature_atlas.runtime.gemma_scope import GemmaScopeRuntime
 
 # Short aliases are accepted by the CLI and normalized in config.registry
 SUPPORTED_SITES = ["resid_post", "res", "mlp_out", "mlp", "attn_out", "att"]
@@ -247,6 +243,8 @@ def cmd_list_sites(_: argparse.Namespace) -> None:
 
 
 def cmd_list_corpora(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.config.datasets import describe_corpus, list_supported_corpora
+
     for name in list_supported_corpora():
         desc = describe_corpus(name)
         if args.json:
@@ -273,6 +271,8 @@ def cmd_resolve_sae(args: argparse.Namespace) -> None:
 
 
 def cmd_plan(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.config.datasets import describe_corpus
+
     cfg = cfg_from_args(args)
     steps = normalize_steps(args.steps, preset=args.preset)
     corpus = describe_corpus(cfg.collection.corpus)
@@ -325,10 +325,14 @@ def cmd_plan(args: argparse.Namespace) -> None:
 
 
 def cmd_smoke_test(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.runtime.gemma_scope import GemmaScopeRuntime
+
     print(json.dumps(GemmaScopeRuntime(cfg_from_args(args)).load().validate(), indent=2))
 
 
 def cmd_run(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.pipeline.runner import run_pipeline
+
     print(
         json.dumps(
             run_pipeline(cfg_from_args(args), steps=args.steps, preset=args.preset),
@@ -338,10 +342,46 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 
 def cmd_report(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.report.markdown import write_report
+
     cfg = cfg_from_args(args)
     write_report(cfg)
     print("Wrote", cfg.summary_md_path)
     print("Wrote", cfg.html_report_path)
+
+
+def _existing_run_dir(value: str) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_dir():
+        raise argparse.ArgumentTypeError(f"not an existing run directory: {value}")
+    return path
+
+
+def _positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be a positive integer") from None
+    if number <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return number
+
+
+def cmd_inspect_run(args: argparse.Namespace) -> None:
+    from sae_feature_atlas.storage import AtlasRun
+
+    run = AtlasRun.from_dir(args.run_dir)
+    print(run.artifact_status().to_string(index=False))
+    if args.feature is not None:
+        card = run.feature_card(args.feature)
+        examples = run.feature_examples(args.feature, n=args.examples)
+        print(f"\nFeature {args.feature}")
+        print(card.to_string() if not card.empty else "No feature card saved for this entry.")
+        print(
+            examples.to_string(index=False)
+            if not examples.empty
+            else "No examples saved for this entry."
+        )
 
 
 def cmd_inspect_feature(args: argparse.Namespace) -> None:
@@ -414,6 +454,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("report")
     add_common_args(p)
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser(
+        "inspect-run", help="Inspect saved artifacts by directory without loading model weights."
+    )
+    p.add_argument("run_dir", type=_existing_run_dir, help="Existing run data directory")
+    p.add_argument("--feature", type=int, help="Feature ID to show with its card and examples")
+    p.add_argument("--examples", type=_positive_int, default=5, help="Maximum examples (default: 5)")
+    p.set_defaults(func=cmd_inspect_run)
 
     p = sub.add_parser("inspect-feature", help="Print top activation examples for one feature.")
     add_common_args(p)

@@ -34,7 +34,7 @@ uv run sae-atlas run --preset atlas --model gemma-3-1b-pt --layer 13 --max-texts
 Saved tables can be read on CPU, without loading model weights:
 
 ~~~bash
-uv run python examples/inspect_run.py data/processed/<run_name> --feature 1645
+uv run sae-atlas inspect-run data/processed/<run_name> --feature 1645 --examples 5
 ~~~
 
 Or use the same reader from a notebook:
