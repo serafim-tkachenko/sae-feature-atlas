@@ -31,6 +31,17 @@ uv run sae-atlas run --preset atlas --model gemma-3-1b-pt --layer 13 --max-texts
 
 ## Inspect an existing run
 
+Build a browser report from saved artifacts:
+
+~~~bash
+uv run sae-atlas report --run-dir data/processed/<run_name>
+~~~
+
+Open `reports/<run_name>/index.html` directly in a browser. Search features, select
+points in the frequency/activation chart, read highlighted contexts, follow
+neighbors, and export a saved selection with its evidence. The report works
+offline without a server, Node, or model weights. See the [report guide](docs/reporting.md).
+
 Saved tables can be read on CPU, without loading model weights:
 
 ~~~bash

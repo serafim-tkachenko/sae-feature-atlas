@@ -25,6 +25,10 @@ concentration, suspicious coactivation pairs, and features worth manual review.
 
 ## Manual inspection commands
 
+For interactive inspection, run `uv run sae-atlas report --run-dir data/processed/<run_name>`
+and open the generated HTML in a browser. The [report guide](reporting.md) describes
+feature search, linked charts, context groups, neighbor navigation, and evidence export.
+
 Start with the saved run's data directory to list artifact availability and,
 optionally, a feature's saved card and top examples:
 

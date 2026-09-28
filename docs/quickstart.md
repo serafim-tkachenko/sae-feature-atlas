@@ -78,10 +78,15 @@ reports/<run_name>/
 Start with:
 
 ```text
+reports/<run_name>/index.html
 reports/<run_name>/summary.md
 data/processed/<run_name>/feature_cards.parquet
 data/processed/<run_name>/bimodal_peak_examples.parquet
 ```
+
+Open `index.html` in a browser for searchable features, context evidence, linked
+neighbors, and selection export. It works offline. To build this explorer for
+an older saved run, use `uv run sae-atlas report --run-dir data/processed/<run_name>`.
 
 ## 8. Load from Python
 
@@ -96,7 +101,7 @@ bimodal_examples = run.bimodal_peak_examples()
 To inspect a saved run from the terminal without loading weights:
 
 ```bash
-uv run python examples/inspect_run.py data/processed/<run_name> --feature 1645
+uv run sae-atlas inspect-run data/processed/<run_name> --feature 1645
 ```
 
 Choose an ID from your run; IDs refer to entries in a particular SAE dictionary.

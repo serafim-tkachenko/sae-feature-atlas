@@ -42,3 +42,20 @@ highest-activation examples. Choose a feature ID from your run. `--examples` mus
 be a positive integer (default: 5). Missing optional tables are reported without
 failing. Either activation file may be absent, depending on the collection mode.
 Use an absolute directory path to inspect a run from outside the project.
+
+Build the offline browser explorer from saved artifacts:
+
+```bash
+uv run sae-atlas report --run-dir data/processed/<run_name>
+uv run sae-atlas report --run-dir data/processed/<run_name> --output reports/exploration.html
+```
+
+The default output is `reports/<directory_name>/index.html`. Open it directly
+in a browser. `--output` requires `--run-dir` and an `.html` destination.
+With `--run-dir`, metadata comes from saved artifacts, not CLI model defaults;
+model/collection flags are unnecessary. This path also supports partial and
+legacy runs without importing the model or plotting runtime. It does not alter
+the saved run. See [reporting](reporting.md) for controls and evidence limits.
+
+Without `--run-dir`, the existing configuration-based `report` command generates
+the full report suite, including Markdown and static diagnostics.
