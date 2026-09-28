@@ -342,6 +342,19 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 
 def cmd_report(args: argparse.Namespace) -> None:
+    if args.run_dir is not None:
+        from sae_feature_atlas.report.explorer import write_explorer
+
+        output = args.output or Path("reports") / args.run_dir.name / "index.html"
+        links = {
+            label: name
+            for label, name in (("Markdown summary", "summary.md"),
+                                ("Static diagnostics", "diagnostics.html"))
+            if (output.parent / name).exists()
+        }
+        print("Wrote", write_explorer(args.run_dir, output, links=links))
+        return
+
     from sae_feature_atlas.report.markdown import write_report
 
     cfg = cfg_from_args(args)
@@ -453,6 +466,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("report")
     add_common_args(p)
+    p.add_argument("--run-dir", type=_existing_run_dir,
+                   help="Build an offline explorer from a saved run, including legacy runs.")
+    p.add_argument("--output", type=Path, help="Explorer .html destination; requires --run-dir.")
     p.set_defaults(func=cmd_report)
 
     p = sub.add_parser(
@@ -486,5 +502,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.command == "report" and args.output is not None and args.run_dir is None:
+        parser.error("--output requires --run-dir")
+    if args.command == "report" and args.output is not None and args.output.suffix.lower() != ".html":
+        parser.error("--output must be an .html file")
     args.func(args)

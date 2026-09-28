@@ -54,6 +54,9 @@ package = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"sae_feature_atlas.report" = ["static/*.js", "static/*.css", "THIRD_PARTY_NOTICES.txt"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

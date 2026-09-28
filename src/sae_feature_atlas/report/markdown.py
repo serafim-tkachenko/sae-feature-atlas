@@ -245,7 +245,7 @@ def _html_table(df: pd.DataFrame, columns: list[str], n: int = 12) -> str:
     return f"<table><thead><tr>{headers}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
 
 
-def write_html_report(cfg: ExperimentConfig) -> None:
+def write_diagnostics_report(cfg: ExperimentConfig) -> None:
     cfg.run_reports_dir.mkdir(parents=True, exist_ok=True)
     plots = generate_plots(cfg.run_data_dir, cfg.run_reports_dir)
     tables = generate_html_tables(cfg.run_data_dir, cfg.run_reports_dir)
@@ -318,9 +318,25 @@ def write_html_report(cfg: ExperimentConfig) -> None:
 </body>
 </html>
 """
-    cfg.html_report_path.write_text(html, encoding="utf-8")
+    (cfg.run_reports_dir / "diagnostics.html").write_text(html, encoding="utf-8")
+
+
+def write_html_report(cfg: ExperimentConfig) -> None:
+    from sae_feature_atlas.report.explorer import write_explorer
+
+    write_explorer(
+        cfg.run_data_dir,
+        cfg.html_report_path,
+        links={
+            label: filename
+            for label, filename in (("Markdown summary", "summary.md"),
+                                    ("Static diagnostics", "diagnostics.html"))
+            if (cfg.run_reports_dir / filename).exists()
+        },
+    )
 
 
 def write_report(cfg: ExperimentConfig) -> None:
     write_markdown_summary(cfg)
+    write_diagnostics_report(cfg)
     write_html_report(cfg)
