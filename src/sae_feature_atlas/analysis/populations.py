@@ -85,8 +85,20 @@ def build_activation_populations(
 ) -> ActivationPopulations:
     """Construct stored and analysis activation/token populations explicitly."""
     validate_sparse_activation_rows(all_stored_activations)
-    stored_tokens = token_metadata.drop_duplicates(TOKEN_KEY).copy()
+    stored_tokens = token_metadata.copy()
     analysis_tokens = build_analysis_token_population(stored_tokens, cfg)
+
+    evidence_columns = [column for column in ("source", "token_str", "token_id")
+                        if column in all_stored_activations and column in stored_tokens]
+    joined = all_stored_activations[TOKEN_KEY + evidence_columns].merge(
+        stored_tokens[TOKEN_KEY + evidence_columns], on=TOKEN_KEY, how="left",
+        suffixes=("", "_metadata"), validate="many_to_one", indicator=True,
+    )
+    if not joined["_merge"].eq("both").all():
+        raise ValueError("Activation positions are missing from token metadata")
+    for column in evidence_columns:
+        if not joined[column].eq(joined[f"{column}_metadata"]).all():
+            raise ValueError(f"Activation {column} values disagree with token metadata")
 
     quality_columns = [
         column

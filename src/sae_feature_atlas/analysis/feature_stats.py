@@ -4,6 +4,14 @@ import pandas as pd
 from tqdm import tqdm
 
 
+TOP_EXAMPLE_COLUMNS = [
+    "feature_id", "rank", "activation", "text_id", "source", "token_pos",
+    "context_start_pos", "context_end_pos", "context_token_ids_json", "raw_token_strings_json",
+    "target_token_id", "target_token_str", "target_quality", "display_quality", "display_context",
+    "left_context", "center_token", "right_context", "activation_population",
+]
+
+
 def compute_feature_stats(
     populations,
     activation_mode: str,
@@ -109,4 +117,4 @@ def build_top_examples(
                     "activation_population": "analysis_activations",
                 }
             )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=TOP_EXAMPLE_COLUMNS)

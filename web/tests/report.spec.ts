@@ -372,3 +372,129 @@ test("previous and next respect filters, sort order, and the ends of the list", 
     page.getByRole("button", { name: "Remove search filter" }),
   ).toBeVisible();
 });
+
+test("saved selections stay in sync across two open report tabs", async ({
+  page,
+  context,
+}) => {
+  await page.goto(`${report}#feature=7`);
+  const other = await context.newPage();
+  await other.goto(`${report}#feature=9`);
+  await page.getByRole("button", { name: "Save feature", exact: true }).click();
+  await expect(
+    other.getByRole("button", { name: "Saved (1)", exact: true }),
+  ).toBeVisible();
+  await other
+    .getByRole("button", { name: "Save feature", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Saved (2)", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Saved", exact: true }).click();
+  await expect(
+    other.getByRole("button", { name: "Saved (1)", exact: true }),
+  ).toBeVisible();
+  await other.reload();
+  await other.getByRole("button", { name: "Saved (1)", exact: true }).click();
+  await expect(
+    other.getByLabel("Matching features").getByRole("button"),
+  ).toHaveCount(1);
+  await expect(
+    other.getByLabel("Matching features").getByRole("button"),
+  ).toContainText("#9");
+});
+
+test("older saved arrays are preserved, deduplicated and can be removed", async ({
+  page,
+}) => {
+  await page.goto(`${report}#feature=7`);
+  await page.evaluate(() => {
+    const data = JSON.parse(
+      document.getElementById("atlas-data")!.textContent!,
+    );
+    localStorage.setItem(
+      `atlas-saved:${data.run.fingerprints.analysis}`,
+      JSON.stringify([7, 7, 9, 99999, "7"]),
+    );
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Saved (2)", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Saved", exact: true }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Saved (1)", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Save feature", exact: true }),
+  ).toBeVisible();
+});
+
+test("simultaneous saves in separate tabs retain both features", async ({
+  page,
+  context,
+}) => {
+  await page.goto(`${report}#feature=7`);
+  const other = await context.newPage();
+  await other.goto(`${report}#feature=9`);
+  await Promise.all([
+    page.getByRole("button", { name: "Save feature", exact: true }).click(),
+    other.getByRole("button", { name: "Save feature", exact: true }).click(),
+  ]);
+  await expect(
+    page.getByRole("button", { name: "Saved (2)", exact: true }),
+  ).toBeVisible();
+  await expect(
+    other.getByRole("button", { name: "Saved (2)", exact: true }),
+  ).toBeVisible();
+});
+
+test("deep links reveal the selected row on its own browser page", async ({
+  page,
+}) => {
+  await page.goto(`${report}#feature=129`);
+  await expect(
+    page.getByLabel("Matching features").getByRole("button", { name: /#129 / }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("next feature crosses a list page boundary and remains visible", async ({
+  page,
+}) => {
+  await page.goto(`${report}#feature=122`);
+  await page.getByRole("button", { name: "Next feature", exact: true }).click();
+  await expect(page).toHaveURL(/#feature=123$/);
+  await expect(
+    page.getByLabel("Matching features").getByRole("button", { name: /#123 / }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(
+    page.getByLabel("Matching features").getByRole("button"),
+  ).toHaveCount(25);
+});
+
+test("an empty analysis selection explains recovery and never displays rejected features", async ({
+  page,
+}) => {
+  await page.goto(
+    pathToFileURL(resolve("../tmp/browser-fixtures/empty-selection.html")).href,
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "No features in this report",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Matching features").getByRole("button"),
+  ).toHaveCount(0);
+  await page
+    .getByText("Run notes · check provenance before comparing results", {
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText(/No features are present in the saved selection/),
+  ).toBeVisible();
+});

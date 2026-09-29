@@ -87,3 +87,15 @@ def test_reanalysis_rejects_inconsistent_token_evidence(legacy_evidence):
     with pytest.raises(ValueError, match="disagree with token metadata"):
         reanalyze_saved_evidence(source, output, manifest, tokenizer)
     assert not output.exists()
+
+
+def test_reanalysis_with_no_selected_features_exports_an_empty_report(legacy_evidence):
+    source, output, manifest, tokenizer = legacy_evidence
+    config = json.loads(manifest.read_text())
+    config["feature_filter"]["min_feature_token_count"] = 100
+    manifest.write_text(json.dumps(config))
+    pd.DataFrame().to_parquet(source / "decoder_neighbors.parquet")
+    result = reanalyze_saved_evidence(source, output, manifest, tokenizer)
+    assert result["counts"]["analysis_features_rows"] == 0
+    assert pd.read_parquet(output / "top_feature_examples.parquet").empty
+    assert build_explorer_payload(output)["features"] == []

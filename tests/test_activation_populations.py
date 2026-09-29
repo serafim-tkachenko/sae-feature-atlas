@@ -48,3 +48,20 @@ def test_sparse_activation_key_must_be_unique() -> None:
     duplicated = pd.concat([_activations(), _activations().iloc[[1]]], ignore_index=True)
     with pytest.raises(ValueError, match="must be unique"):
         validate_sparse_activation_rows(duplicated)
+
+
+def test_duplicate_token_metadata_is_rejected_before_deduplication():
+    tokens = pd.concat([_tokens(), _tokens().iloc[[1]]], ignore_index=True)
+    with pytest.raises(ValueError, match="unique"):
+        build_activation_populations(_activations(), tokens, ActivationRowFilterConfig())
+
+
+@pytest.mark.parametrize("change", ["missing_position", "token_str", "source"])
+def test_activation_population_rejects_inconsistent_evidence(change):
+    acts = _activations()
+    if change == "missing_position":
+        acts.loc[1, "token_pos"] = 50
+    else:
+        acts.loc[1, change] = "wrong"
+    with pytest.raises(ValueError, match="token metadata"):
+        build_activation_populations(acts, _tokens(), ActivationRowFilterConfig())

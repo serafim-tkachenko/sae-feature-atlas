@@ -7,6 +7,19 @@ from tqdm import tqdm
 from sae_feature_atlas.analysis.coactivation import canonical_pair
 
 
+NEIGHBOR_COLUMNS = ["feature_i", "feature_j", "rank", "decoder_cosine", "geometry_target_universe"]
+
+
+def _reverse_conditionals(table: pd.DataFrame) -> None:
+    """Swap directional probabilities between canonical and directed orientation."""
+    columns = ["p_j_given_i", "p_i_given_j"]
+    for column in columns:
+        if column not in table:
+            table[column] = float("nan")
+    reverse = table.feature_i.gt(table.feature_j)
+    table.loc[reverse, columns] = table.loc[reverse, columns[::-1]].to_numpy(copy=True)
+
+
 def get_decoder_weight(sae) -> torch.Tensor:
     if hasattr(sae, "W_dec"):
         return sae.W_dec
@@ -30,10 +43,10 @@ def compute_decoder_neighbors(
     )
     candidate_ids = torch.tensor(candidate_ids_list, device=w_dec.device, dtype=torch.long)
     candidate_vectors = w_dec[candidate_ids]
-    effective_k = min(top_k, max(0, len(candidate_ids_list) - 1))
+    effective_k = min(top_k, len(candidate_ids_list))
     rows = []
     if effective_k == 0:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=NEIGHBOR_COLUMNS)
 
     candidate_position = {feature_id: idx for idx, feature_id in enumerate(candidate_ids_list)}
     universe = (
@@ -47,11 +60,13 @@ def compute_decoder_neighbors(
         for local_idx, feature_id in enumerate(batch_ids.tolist()):
             candidate_idx = candidate_position.get(feature_id)
             if candidate_idx is not None:
-                sims[local_idx, candidate_idx] = -1.0
+                sims[local_idx, candidate_idx] = -float("inf")
         values, indices = torch.topk(sims, k=effective_k, dim=-1)
         for local_idx, feature_id in enumerate(batch_ids.tolist()):
             for rank in range(effective_k):
                 neighbor_idx = int(indices[local_idx, rank].item())
+                if int(candidate_ids[neighbor_idx].item()) == feature_id:
+                    continue
                 rows.append(
                     {
                         "feature_i": int(feature_id),
@@ -61,7 +76,7 @@ def compute_decoder_neighbors(
                         "geometry_target_universe": universe,
                     }
                 )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=NEIGHBOR_COLUMNS)
 
 
 def merge_geometry_with_coactivation(
@@ -71,6 +86,8 @@ def merge_geometry_with_coactivation(
 ) -> pd.DataFrame:
     """Match directed geometry edges to orientation-invariant empirical pairs."""
     geometry = decoder_neighbors.copy()
+    if geometry.empty:
+        geometry = geometry.reindex(columns=list(dict.fromkeys([*geometry.columns, *NEIGHBOR_COLUMNS])))
     geometry["pair_key"] = [
         f"{i}:{j}" for i, j in (
             canonical_pair(i, j)
@@ -79,6 +96,7 @@ def merge_geometry_with_coactivation(
     ]
     coactivation = coactivation_pairs.copy()
     if not coactivation.empty:
+        _reverse_conditionals(coactivation)
         coactivation["pair_key"] = [
             f"{i}:{j}" for i, j in (
                 canonical_pair(i, j)
@@ -113,6 +131,8 @@ def merge_geometry_with_coactivation(
     ]:
         if column not in merged.columns:
             merged[column] = pd.NA
+
+    _reverse_conditionals(merged)
 
     observed = merged.get(
         "coactivation_status", pd.Series(index=merged.index, dtype="object")

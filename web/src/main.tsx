@@ -18,6 +18,34 @@ function hashId(): number | null {
   return value !== null && /^\d+$/.test(value) ? Number(value) : null;
 }
 
+function readSavedSelection(key: string, ids: Set<number>): number[] {
+  let legacy: unknown;
+  try {
+    legacy = JSON.parse(localStorage.getItem(key) || "[]");
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    legacy = [];
+  }
+  const selected = new Set<number>(
+    Array.isArray(legacy)
+      ? legacy.filter((id) => typeof id === "number" && ids.has(id))
+      : [],
+  );
+  // One key per feature avoids overwriting another tab's independent edits.
+  // Existing array-based selections remain readable; explicit removals override them.
+  const prefix = `${key}:feature:`;
+  for (let index = 0; index < localStorage.length; index++) {
+    const item = localStorage.key(index);
+    if (!item?.startsWith(prefix)) continue;
+    const id = Number(item.slice(prefix.length));
+    if (!ids.has(id)) continue;
+    const value = localStorage.getItem(item);
+    if (value === "1") selected.add(id);
+    if (value === "0") selected.delete(id);
+  }
+  return [...selected];
+}
+
 function Context({
   example,
   compact,
@@ -534,16 +562,28 @@ function App({ report }: { report: Report }) {
   const storageKey = `atlas-saved:${report.run.fingerprints.analysis || `${report.run.name}:${report.run.sae_id}`}`;
   const [saved, setSaved] = useState<number[]>(() => {
     try {
-      const stored: unknown = JSON.parse(
-        localStorage.getItem(storageKey) || "[]",
-      );
-      return Array.isArray(stored)
-        ? stored.filter((id) => typeof id === "number" && ids.has(id))
-        : [];
+      return readSavedSelection(storageKey, ids);
     } catch {
       return [];
     }
   });
+  useEffect(() => {
+    const update = (event: StorageEvent) => {
+      if (
+        event.key !== null &&
+        event.key !== storageKey &&
+        !event.key.startsWith(`${storageKey}:feature:`)
+      )
+        return;
+      try {
+        setSaved(readSavedSelection(storageKey, ids));
+      } catch {
+        // Keep session selections when browser storage is unavailable.
+      }
+    };
+    addEventListener("storage", update);
+    return () => removeEventListener("storage", update);
+  }, [storageKey, ids]);
   useEffect(() => {
     const update = () => setSelected(hashId() ?? features[0]?.id ?? null);
     addEventListener("hashchange", update);
@@ -652,6 +692,9 @@ function App({ report }: { report: Report }) {
   const lastPage = Math.max(0, Math.ceil(visible.length / PAGE_SIZE) - 1);
   const currentPage = Math.min(page, lastPage);
   const selectedIndex = visible.findIndex((f) => f.id === selected);
+  useEffect(() => {
+    if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / PAGE_SIZE));
+  }, [selected, selectedIndex]);
   const activeFilters = [
     ...(query.trim()
       ? [
@@ -747,7 +790,11 @@ function App({ report }: { report: Report }) {
       : [...saved, id];
     setSaved(next);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
+      localStorage.setItem(
+        `${storageKey}:feature:${id}`,
+        next.includes(id) ? "1" : "0",
+      );
+      setSaved(readSavedSelection(storageKey, ids));
       setMessage(
         next.includes(id)
           ? `Feature ${id} saved in this browser.`
@@ -1153,11 +1200,17 @@ function App({ report }: { report: Report }) {
             ) : (
               <div className="empty">
                 <h2>
-                  {selected !== null
-                    ? `Feature ${selected} is not in this report`
-                    : "No feature selected"}
+                  {features.length === 0
+                    ? "No features in this report"
+                    : selected !== null
+                      ? `Feature ${selected} is not in this report`
+                      : "No feature selected"}
                 </h2>
-                <p>Choose a feature from the list to inspect saved evidence.</p>
+                <p>
+                  {features.length === 0
+                    ? "Open Run details and the run notes to check evidence availability, selection thresholds and sample size."
+                    : "Choose a feature from the list to inspect saved evidence."}
+                </p>
               </div>
             )}
           </div>

@@ -243,13 +243,17 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
     feature_source = "feature_cards.parquet"
     for name in ("feature_cards.parquet", "analysis_features.parquet", "feature_stats.parquet"):
         cards = artifacts.read(name)
-        if not cards.empty:
+        if artifacts.status[name]["status"] in {"ready", "empty"}:
             feature_source = name
             break
+    if cards.empty and artifacts.status[feature_source]["status"] == "empty":
+        warnings.append("No features are present in the saved selection. Check feature-selection "
+                        "thresholds and sample size; rejected features are not substituted.")
     if feature_source != "feature_cards.parquet":
         warnings.append(
             f"Feature cards are unavailable. Showing {feature_source}; "
-            "some features may not have passed analysis selection."
+            + ("some features may not have passed analysis selection."
+               if feature_source == "feature_stats.parquet" else "showing the saved analysis selection.")
         )
     if not cards.empty:
         ids = pd.to_numeric(cards.feature_id, errors="coerce")
@@ -352,7 +356,7 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
                 if group == "top"
                 else "bimodal_peak_examples.parquet"
             )
-            if not saved_rows:
+            if not saved_rows and artifacts.status[source]["status"] not in {"ready", "empty"}:
                 saved_rows = _embedded(
                     row, "top_examples_json" if group == "top" else f"bimodal_{group}_examples_json"
                 )
@@ -361,7 +365,10 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
         neighbors = {}
         for kind in ("decoder", "coactivation"):
             source = decoder if kind == "decoder" else coactivation
-            rows = source.get(fid, []) or _embedded(row, f"top_{kind}_neighbors_json")
+            rows = source.get(fid, [])
+            artifact = "decoder_neighbors.parquet" if kind == "decoder" else "coactivation_pairs.parquet"
+            if not rows and artifacts.status[artifact]["status"] not in {"ready", "empty"}:
+                rows = _embedded(row, f"top_{kind}_neighbors_json")
             metric = "decoder_cosine" if kind == "decoder" else "jaccard"
             rows = sorted(rows, key=lambda item: item.get(metric) or 0, reverse=True)[
                 :NEIGHBORS_PER_FEATURE

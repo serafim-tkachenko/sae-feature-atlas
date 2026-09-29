@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 
 import numpy as np
@@ -16,9 +17,11 @@ class AtlasRun:
 
     @classmethod
     def from_dir(cls, path: str | Path) -> "AtlasRun":
-        run_dir = Path(path)
+        run_dir = Path(path).expanduser()
         if not run_dir.exists():
             raise FileNotFoundError(run_dir)
+        if not run_dir.is_dir():
+            raise NotADirectoryError(run_dir)
         return cls(run_dir)
 
     def _parquet(self, name: str, *, required: bool = False) -> pd.DataFrame:
@@ -32,13 +35,32 @@ class AtlasRun:
     def token_metadata(self) -> pd.DataFrame:
         return self._parquet("token_metadata.parquet")
 
-    def sae_activations(self) -> pd.DataFrame:
-        topk = self.path / "sae_activations_topk.parquet"
-        positive = self.path / "sae_activations_positive.parquet"
-        if topk.exists():
-            return pd.read_parquet(topk)
-        if positive.exists():
-            return pd.read_parquet(positive)
+    def sae_activations(self, *, mode: str | None = None) -> pd.DataFrame:
+        """Read the recorded storage mode, or an explicitly requested format.
+
+        Without recorded identity, a single saved format is unambiguous. Two
+        formats require the caller to choose; they are not interchangeable.
+        """
+        if mode is None:
+            lineage_path = self.path / "lineage.json"
+            if lineage_path.exists():
+                try:
+                    lineage = json.loads(lineage_path.read_text(encoding="utf-8"))
+                    mode = lineage.get("fingerprint_payloads", {}).get("collection", {}).get(
+                        "collection", {}).get("activation_mode")
+                except (ValueError, AttributeError) as error:
+                    raise ValueError(f"Cannot read activation storage identity from {lineage_path}") from error
+        if mode is not None:
+            if mode not in {"topk", "positive"}:
+                raise ValueError(f"Unknown activation storage mode: {mode!r}")
+            return self._parquet(f"sae_activations_{mode}.parquet", required=True)
+        candidates = [self.path / f"sae_activations_{kind}.parquet" for kind in ("topk", "positive")]
+        candidates = [path for path in candidates if path.exists()]
+        if len(candidates) > 1:
+            raise ValueError("Both activation formats exist without recorded storage identity. "
+                             "Pass mode='topk' or mode='positive' explicitly.")
+        if candidates:
+            return pd.read_parquet(candidates[0])
         return pd.DataFrame()
 
     def residual_vectors(self) -> np.ndarray:

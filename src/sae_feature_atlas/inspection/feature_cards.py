@@ -46,12 +46,14 @@ def _merge_replace(
     columns_to_replace: list[str],
 ) -> pd.DataFrame:
     """Merge enrichment columns in an idempotent way."""
-    if right is None or right.empty or on not in right.columns:
+    if right is None:
+        return left
+    left = _drop_columns_if_present(left, columns_to_replace)
+    if right.empty or on not in right.columns:
         return left
 
     right_cols = [on] + [col for col in columns_to_replace if col in right.columns]
     right_small = right[right_cols].drop_duplicates(subset=[on])
-    left = _drop_columns_if_present(left, [col for col in right_cols if col != on])
     return left.merge(right_small, on=on, how="left")
 
 
@@ -69,7 +71,7 @@ def build_basic_feature_cards(
     for feature_id, group in top_examples.groupby("feature_id"):
         rows.append({"feature_id": int(feature_id), "top_examples_json": _top_examples_json(group)})
 
-    examples_df = pd.DataFrame(rows)
+    examples_df = pd.DataFrame(rows, columns=["feature_id", "top_examples_json"])
     cards = analysis_features.merge(examples_df, on="feature_id", how="left")
 
     cards["model_name"] = cfg.model.model_name
@@ -216,16 +218,18 @@ def _merge_bimodality(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFram
             "activation_max",
             "n_points",
         ]
+        replace_columns = [col for col in keep if col != "feature_id"]
         keep = [col for col in keep if col in bimodal.columns]
         cards = _merge_replace(
             cards,
             bimodal[keep],
             on="feature_id",
-            columns_to_replace=[c for c in keep if c != "feature_id"],
+            columns_to_replace=replace_columns,
         )
 
     if cfg.bimodal_peak_examples_path.exists():
         examples = pd.read_parquet(cfg.bimodal_peak_examples_path)
+        cards = _drop_columns_if_present(cards, ["bimodal_low_examples_json", "bimodal_high_examples_json"])
         if not examples.empty and {"feature_id", "peak_label"}.issubset(examples.columns):
             rows: list[dict] = []
             cols = [
@@ -270,7 +274,7 @@ def _merge_decoder_neighbors(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.D
         return cards
     neighbors = pd.read_parquet(cfg.decoder_neighbors_path)
     if neighbors.empty:
-        return cards
+        return _drop_columns_if_present(cards, ["max_decoder_cosine", "top_decoder_neighbors_json"])
 
     max_cos = (
         neighbors.groupby("feature_i")["decoder_cosine"]
@@ -305,7 +309,7 @@ def _merge_coactivation(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
         return cards
     coactivation = pd.read_parquet(cfg.coactivation_pairs_path)
     if coactivation.empty:
-        return cards
+        return _drop_columns_if_present(cards, ["max_coactivation_jaccard", "max_coactivation_pmi", "top_coactivation_neighbors_json"])
 
     left = coactivation.rename(
         columns={"feature_i": "feature_id", "feature_j": "neighbor_feature_id"}

@@ -93,8 +93,6 @@ def reanalyze_saved_evidence(
     counts = build_and_save_feature_outputs(populations, renderer, cfg)
     selected = pd.read_parquet(cfg.analysis_features_path)
     ids = set(selected.feature_id.astype(int))
-    if not ids:
-        raise ValueError("No features pass selection; inspect the saved population and thresholds")
     top = pd.read_parquet(cfg.top_examples_path)
     pairs = compute_same_token_coactivation(
         populations.analysis_activations, ids, populations.analysis_tokens,
@@ -123,7 +121,8 @@ def reanalyze_saved_evidence(
     decoder_path = source / "decoder_neighbors.parquet"
     if decoder_path.exists():
         decoder = pd.read_parquet(decoder_path)
-        decoder = decoder[decoder.feature_i.isin(ids)]
+        if not decoder.empty:
+            decoder = decoder[decoder.feature_i.isin(ids)]
         decoder.to_parquet(cfg.decoder_neighbors_path, index=False)
         inputs[decoder_path.name] = _sha256(decoder_path)
         notes.append("Decoder cosines reuse the original saved candidate edges; nearest neighbors "

@@ -56,3 +56,9 @@ def test_bimodality_is_deterministic_and_separates_evaluated_from_candidates() -
     insufficient = first.evaluated_features.set_index("feature_id").loc[99]
     assert insufficient["fit_status"] == "insufficient_points"
     assert 99 not in set(first.candidates["feature_id"])
+
+
+def test_empty_feature_selection_preserves_candidate_schema():
+    result = compute_bimodality(_mixture_rows(), set())
+    assert result.candidates.empty
+    assert "feature_id" in result.candidates

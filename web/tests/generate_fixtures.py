@@ -83,3 +83,9 @@ pd.DataFrame(
     [{"feature_id": 7, "token_frequency": 0.1, "n_token_activations": 10, "n_texts": 2}]
 ).to_parquet(legacy / "feature_stats.parquet")
 write_explorer(legacy, root / "legacy.html")
+
+empty_selection = root / "empty-selection"
+empty_selection.mkdir(exist_ok=True)
+pd.DataFrame(columns=["feature_id"]).to_parquet(empty_selection / "feature_cards.parquet")
+pd.DataFrame([{"feature_id": 7, "n_token_activations": 1}]).to_parquet(empty_selection / "feature_stats.parquet")
+write_explorer(empty_selection, root / "empty-selection.html")

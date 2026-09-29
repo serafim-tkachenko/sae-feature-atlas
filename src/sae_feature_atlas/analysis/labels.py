@@ -21,7 +21,9 @@ def _safe_numeric(series: pd.Series | None, default: float = 0.0, index=None) ->
     if series is None:
         return pd.Series(default, index=index)
 
-    return pd.to_numeric(series, errors="coerce").fillna(default)
+    return pd.to_numeric(series, errors="coerce").replace(
+        [float("inf"), -float("inf")], float("nan")
+    ).fillna(default)
 
 
 def _available_numeric(series: pd.Series | None, index) -> tuple[pd.Series, pd.Series]:
@@ -34,7 +36,7 @@ def _available_numeric(series: pd.Series | None, index) -> tuple[pd.Series, pd.S
     if series is None:
         return pd.Series(0.0, index=index), pd.Series(False, index=index)
 
-    numeric = pd.to_numeric(series, errors="coerce")
+    numeric = pd.to_numeric(series, errors="coerce").replace([float("inf"), -float("inf")], float("nan"))
     available = numeric.notna()
     return numeric.fillna(0.0), available
 
@@ -124,7 +126,7 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     )
 
     token_frequency = _safe_numeric(out.get("token_frequency"), 0.0, index=out.index)
-    p99_activation = _safe_numeric(out.get("p99_activation"), 0.0, index=out.index)
+    p99_activation, p99_available = _available_numeric(out.get("p99_activation"), out.index)
     n_token_activations = _safe_numeric(out.get("n_token_activations"), 0.0, index=out.index)
     bimodality_score = _safe_numeric(out.get("bimodality_score"), 0.0, index=out.index)
     max_decoder_cosine = _safe_numeric(out.get("max_decoder_cosine"), 0.0, index=out.index)
@@ -135,7 +137,13 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     )
     interpretability_triage_score = _safe_numeric(out.get("interpretability_triage_score"), 0.0, index=out.index)
 
-    existing_labels = [_split_labels(v) for v in out["inspection_labels"].tolist()]
+    # Derived labels must reflect the current evidence, including evidence removed
+    # since the last enrichment. Keep independent inspection observations.
+    derived_labels = {
+        "likely_artifact", "rare_high_intensity", "coactivation_hub", "decoder_geometry_dense",
+        "bimodal_candidate", "high_intensity", "high_frequency", "manual_review", "rare_feature",
+    }
+    existing_labels = [_split_labels(v) - derived_labels for v in out["inspection_labels"].tolist()]
 
     def add_label(mask: pd.Series, label: str) -> None:
         mask = mask.reindex(out.index, fill_value=False).fillna(False).astype(bool)
@@ -162,11 +170,11 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     add_label(rare_feature, "rare_feature")
 
     high_intensity_threshold = _quantile_threshold(
-        p99_activation,
+        p99_activation[p99_available & p99_activation.gt(0)],
         0.90,
         default=float("inf"),
     )
-    high_intensity = p99_activation >= high_intensity_threshold
+    high_intensity = p99_available & p99_activation.gt(0) & (p99_activation >= high_intensity_threshold)
     add_label(high_intensity, "high_intensity")
 
     rare_high_intensity = rare_feature & high_intensity
@@ -228,7 +236,10 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     out["inspection_labels"] = [",".join(sorted(labels)) for labels in existing_labels]
     out["primary_label"] = out["inspection_labels"].map(primary_label)
 
-    missing_priority = _missing_or_empty(out["manual_priority"])
+    # This column is generated triage priority, not a researcher annotation.
+    # Recompute it with the labels so an old high priority cannot survive the
+    # removal of the evidence that justified it.
+    out["manual_priority"] = "unreviewed"
 
     high_priority = (
         out["primary_label"].isin(
@@ -257,10 +268,10 @@ def assign_feature_labels(cards: pd.DataFrame) -> pd.DataFrame:
     low_priority = likely_artifact
     unreviewed = out["primary_label"].eq("unlabeled")
 
-    out.loc[missing_priority & high_priority, "manual_priority"] = "high"
-    out.loc[missing_priority & medium_priority, "manual_priority"] = "medium"
-    out.loc[missing_priority & low_priority, "manual_priority"] = "low"
-    out.loc[missing_priority & unreviewed, "manual_priority"] = "unreviewed"
+    out.loc[high_priority, "manual_priority"] = "high"
+    out.loc[medium_priority, "manual_priority"] = "medium"
+    out.loc[low_priority, "manual_priority"] = "low"
+    out.loc[unreviewed, "manual_priority"] = "unreviewed"
 
     # Recompute stale priorities from previous broader runs
     out.loc[out["primary_label"].eq("manual_review"), "manual_priority"] = "medium"

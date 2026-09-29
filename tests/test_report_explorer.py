@@ -143,6 +143,33 @@ def test_missing_empty_and_unreadable_are_distinct(tmp_path):
     assert payload["features"] == []
 
 
+@pytest.mark.parametrize("selected_table", ["feature_cards.parquet", "analysis_features.parquet"])
+def test_empty_selection_never_falls_back_to_unselected_statistics(tmp_path, selected_table):
+    pd.DataFrame(columns=["feature_id"]).to_parquet(tmp_path / selected_table)
+    pd.DataFrame([{"feature_id": 7, "n_token_activations": 1}]).to_parquet(tmp_path / "feature_stats.parquet")
+    payload = build_explorer_payload(tmp_path)
+    assert payload["features"] == []
+    assert payload["run"]["feature_source"] == selected_table
+    assert any("No features" in warning for warning in payload["warnings"])
+
+
+def test_empty_evidence_tables_override_stale_embedded_card_evidence(saved_run):
+    cards = pd.read_parquet(saved_run.feature_cards_path)
+    old_example = json.dumps([{"feature_id": 7, "activation": 9., "text_id": 0, "token_pos": 1,
+                               "center_token": "stale"}])
+    for column in ["top_examples_json", "bimodal_low_examples_json", "bimodal_high_examples_json"]:
+        cards[column] = old_example
+    for column in ["top_decoder_neighbors_json", "top_coactivation_neighbors_json"]:
+        cards[column] = json.dumps([{"neighbor_feature_id": 9, "decoder_cosine": .9, "jaccard": .8}])
+    cards.to_parquet(saved_run.feature_cards_path)
+    for path in [saved_run.top_examples_path, saved_run.bimodal_peak_examples_path,
+                 saved_run.decoder_neighbors_path, saved_run.coactivation_pairs_path]:
+        pd.DataFrame().to_parquet(path)
+    feature = build_explorer_payload(saved_run.run_data_dir)["features"][0]
+    assert all(not rows for rows in feature["examples"].values())
+    assert all(not rows for rows in feature["neighbors"].values())
+
+
 def test_missing_required_columns_are_unreadable(tmp_path):
     pd.DataFrame([{"feature_id": 1}]).to_parquet(tmp_path / "coactivation_pairs.parquet")
     payload = build_explorer_payload(tmp_path)

@@ -138,6 +138,11 @@ def compute_bimodality(
 
     evaluated = pd.DataFrame(rows)
     if evaluated.empty:
+        evaluated = pd.DataFrame(columns=[
+            "feature_id", "n_points", "fit_status", "converged", "is_bimodal_candidate",
+            "gmm_random_seed", "gmm_n_init", "activation_population", "activation_storage_mode",
+            "rank_censored", "delta_bic", "bimodality_score",
+        ])
         return BimodalityResult(evaluated, evaluated.copy())
     candidates = evaluated[evaluated["is_bimodal_candidate"].fillna(False)].copy()
     if not candidates.empty:
