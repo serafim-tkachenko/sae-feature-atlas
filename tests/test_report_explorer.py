@@ -118,6 +118,18 @@ def test_legacy_values_are_not_relabelled_as_current_analysis(tmp_path):
     assert feature["triage_score"] is None
 
 
+def test_saved_formatting_targets_warn_without_silently_changing_metrics(saved_run):
+    examples = pd.read_parquet(saved_run.top_examples_path)
+    examples["center_token"] = "’"
+    examples.to_parquet(saved_run.top_examples_path)
+    payload = build_explorer_payload(saved_run.run_data_dir)
+    assert any("8 formatting targets" in warning for warning in payload["warnings"])
+    feature = payload["features"][0]
+    assert feature["p99"] == 3.0
+    assert feature["examples"]["top"][0]["center_token"] == "’"
+    assert payload["export_policy"]["example_target_quality_counts"] == {"quote": 8}
+
+
 def test_missing_empty_and_unreadable_are_distinct(tmp_path):
     (tmp_path / "feature_cards.parquet").write_bytes(b"broken")
     pd.DataFrame().to_parquet(tmp_path / "decoder_neighbors.parquet")

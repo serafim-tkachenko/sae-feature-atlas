@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from html import escape
 from importlib.resources import files
 from pathlib import Path
@@ -15,6 +16,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+
+from sae_feature_atlas.analysis.token_quality import token_quality_label
 
 REPORT_SCHEMA_VERSION = 1
 EXAMPLES_PER_GROUP = 8
@@ -214,6 +217,18 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
         artifacts.failed("lineage.json", error)
         lineage = {}
     coactivation_metadata = artifacts.json("coactivation_metadata.json")
+    reanalysis = artifacts.json("reanalysis.json")
+    if reanalysis:
+        if (reanalysis.get("schema_version") != 1
+                or reanalysis.get("kind") != "saved_evidence_reanalysis"
+                or not isinstance(reanalysis.get("source_run"), str)
+                or not isinstance(reanalysis.get("notes"), list)
+                or not all(isinstance(note, str) for note in reanalysis["notes"])
+                or not isinstance(reanalysis.get("activation_filter"), dict)):
+            artifacts.failed("reanalysis.json", ValueError("Unsupported reanalysis record"))
+            reanalysis = {}
+        else:
+            warnings.extend(reanalysis["notes"])
     schema = lineage.get("artifact_schema_version")
     provenance = "recorded" if schema == 2 else "legacy" if not lineage else "unsupported"
     if artifacts.status["lineage.json"]["status"] == "unreadable":
@@ -221,7 +236,7 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
     if provenance != "recorded":
         warnings.append(
             "Collection provenance is unavailable or uses an unsupported schema. "
-            "Treat this run as unverified; legacy metrics retain their original meaning."
+            "Treat the original collection as unverified. Viewing a report does not re-run inference."
         )
 
     cards = pd.DataFrame()
@@ -262,6 +277,7 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
         "artifact_schema": schema,
         "fingerprints": lineage.get("fingerprints", {}),
         "git": lineage.get("git", {}),
+        "reanalysis_source": reanalysis.get("source_run"),
     }
     for key in (
         "model_name",
@@ -282,6 +298,8 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
     metadata["analysis_tokens"] = unique("analysis_token_denominator")
     metadata["feature_source"] = feature_source
     metadata["collected_token_rows"] = artifacts.status["token_metadata.parquet"]["rows"]
+    token_ids = artifacts.read("token_metadata.parquet", columns=["text_id"])
+    metadata["collected_texts"] = int(token_ids.text_id.nunique()) if not token_ids.empty else None
 
     top = _groups(artifacts.read("top_feature_examples.parquet"))
     regimes = _groups(artifacts.read("bimodal_peak_examples.parquet"))
@@ -389,6 +407,21 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
                 },
             }
         )
+    target_quality_counts = Counter(
+        token_quality_label(example["center_token"])
+        for feature in features
+        for examples in feature["examples"].values()
+        for example in examples
+        if example["center_token"] is not None
+    )
+    formatting_targets = sum(count for label, count in target_quality_counts.items() if label != "clean")
+    if formatting_targets:
+        warnings.append(
+            f"Saved examples contain {formatting_targets:,} formatting targets "
+            "(quotes, punctuation, whitespace, symbols or other token artifacts). "
+            "This export preserves saved evidence; it does not apply a new token filter. "
+            "Reanalyze examples and statistics together to change their eligibility policy."
+        )
     return _clean(
         {
             "schema_version": REPORT_SCHEMA_VERSION,
@@ -401,6 +434,7 @@ def build_explorer_payload(run_dir: str | Path) -> dict:
                 "examples_per_group": EXAMPLES_PER_GROUP,
                 "neighbors_per_feature": NEIGHBORS_PER_FEATURE,
                 "histogram_population": "all_stored_activations",
+                "example_target_quality_counts": dict(target_quality_counts),
             },
         }
     )

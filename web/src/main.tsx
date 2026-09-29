@@ -266,6 +266,13 @@ function FeatureDetail({
       <p className="context-legend">
         <span className="token-swatch">Highlighted token</span> = the recorded
         activation position. The color marks position, not strength.
+        {report.run.reanalysis_source && (
+          <>
+            {" "}
+            Target filtering applies to highlights; surrounding punctuation is
+            preserved.
+          </>
+        )}
       </p>
       <div className="context-controls">
         <div className="context-tabs" aria-label="Context example group">
@@ -436,6 +443,8 @@ function RunDetails({ report }: { report: Report }) {
           SAE: `${report.run.sae_release ?? "Unknown"} / ${report.run.sae_id ?? "Unknown"}`,
           Hook: report.run.hook_name,
           "Collected token rows": number(report.run.collected_token_rows),
+          "Collected texts": number(report.run.collected_texts ?? null),
+          "Reanalyzed from": report.run.reanalysis_source,
           "Stored-token denominator": number(report.run.stored_tokens),
           "Eligible-token denominator": number(report.run.analysis_tokens),
           "Collection fingerprint": report.run.fingerprints.collection,
@@ -835,6 +844,9 @@ function App({ report }: { report: Report }) {
             {report.run.corpus || "Corpus unknown"}
           </span>
           <span>{features.length.toLocaleString()} features</span>
+          {report.run.collected_texts != null && (
+            <span>{number(report.run.collected_texts)} texts in this run</span>
+          )}
           <span>
             {report.run.activation_mode === "topk"
               ? `Top-${report.run.top_k ?? "?"} retained activations`
@@ -846,7 +858,9 @@ function App({ report }: { report: Report }) {
         {report.warnings.length > 0 && (
           <details className="notice run-notes">
             <summary>
-              Run notes · check provenance before comparing results
+              {report.run.reanalysis_source
+                ? "Reanalyzed saved evidence · token policy & limitations"
+                : "Run notes · check provenance before comparing results"}
             </summary>
             {report.warnings.map((text) => (
               <p key={text}>{text}</p>
@@ -1034,7 +1048,7 @@ function App({ report }: { report: Report }) {
               </label>
             </div>
             <p className="list-hint">
-              Select a row to inspect. Quotes show example tokens; percentages
+              Example targets are observations, not feature names. Percentages
               show frequency.
             </p>
             <div className="feature-list" aria-label="Matching features">
@@ -1053,7 +1067,7 @@ function App({ report }: { report: Report }) {
                     </span>
                     {f.examples.top[0]?.center_token && (
                       <span className="row-preview">
-                        “
+                        Example: “
                         {f.examples.top[0].center_token.trim().slice(0, 56) ||
                           "[whitespace]"}
                         ”

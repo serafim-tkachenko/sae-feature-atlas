@@ -61,6 +61,8 @@ export interface Report {
     stored_tokens: number | null;
     analysis_tokens: number | null;
     collected_token_rows: number | null;
+    collected_texts?: number | null;
+    reanalysis_source?: string | null;
     feature_source: string;
   };
   warnings: string[];

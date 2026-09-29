@@ -140,7 +140,8 @@ def compute_bimodality(
     if evaluated.empty:
         return BimodalityResult(evaluated, evaluated.copy())
     candidates = evaluated[evaluated["is_bimodal_candidate"].fillna(False)].copy()
-    candidates = candidates.sort_values("delta_bic", ascending=False).reset_index(drop=True)
+    if not candidates.empty:
+        candidates = candidates.sort_values("delta_bic", ascending=False).reset_index(drop=True)
     return BimodalityResult(evaluated.reset_index(drop=True), candidates)
 
 

@@ -32,6 +32,12 @@ test("opens directly from disk offline, with literal context text and real histo
   await expect(page.locator("mark").first()).toHaveText(
     "<script>globalThis.injected=true</script>",
   );
+  await expect(
+    page.getByText("2 texts in this run", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Matching features").getByRole("button").first(),
+  ).toContainText("Example:");
   expect(
     await page.evaluate(() => (globalThis as any).injected),
   ).toBeUndefined();

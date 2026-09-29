@@ -82,6 +82,7 @@ const topics = {
       "The green highlight marks the target token whose activation is recorded. A token can be a word, part of a word, punctuation, or whitespace.",
     points: [
       "The activation number belongs to that target position. Surrounding text provides context; its unhighlighted tokens do not imply zero activation.",
+      "An example target is not a feature name. In a causal language model, preceding text and the current token can affect this activation; the text to the right is shown only for reading context.",
       "Snippet shortens the surrounding text and collapses line breaks. Expanded shows all saved left/right context. The activation bar compares the target value with the strongest saved value in the current group; it is not a percentile.",
       "Strongest shows saved high-activation examples, not a random or representative sample. Compare several texts and look for counterexamples.",
       "Low and high regime examples come from lower- and higher-mean components of a fitted activation model. A two-component fit does not establish two meanings.",

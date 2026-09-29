@@ -20,6 +20,9 @@ cfg = replace(
 )
 cfg.run_data_dir.mkdir(parents=True, exist_ok=True)
 write_lineage(cfg, "cards")
+pd.DataFrame({"text_id": [0] * 60 + [1] * 60, "token_pos": list(range(60)) * 2}).to_parquet(
+    cfg.token_metadata_path
+)
 pd.DataFrame(
     [
         {

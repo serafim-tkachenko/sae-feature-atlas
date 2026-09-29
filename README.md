@@ -62,6 +62,10 @@ pairs = run.coactivation_pairs()
 
 The feature ID is dictionary-specific; choose one from your run's cards. Optional analysis tables are empty when that stage has not been run. See [inspection](docs/inspection.md) and the [analysis workflow](docs/analysis_workflow.md).
 
+If an older report still highlights quotes or punctuation, exporting it again will
+preserve those saved examples. [Reanalyze saved evidence](docs/saved-evidence-reanalysis.md)
+to apply the current token policy to examples and statistics together in a separate run.
+
 ## Choose the collection and analysis scope
 
 | Option | What it does |
