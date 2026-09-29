@@ -73,9 +73,6 @@ An invalid support filter is ignored until corrected; an invalid frequency
 range suspends both frequency bounds. Other valid filters still apply, and the
 error stays visible. Reset filters clears all constraints.
 
-See [Report UX design notes](report-ux.md) for the reference interfaces and
-reasoning behind these choices.
-
 ## Evidence and population boundaries
 
 - The explorer includes every saved feature card, with at most **8 contexts per

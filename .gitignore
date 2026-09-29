@@ -55,3 +55,9 @@ dist/
 node_modules/
 web/test-results/
 web/playwright-report/
+
+# Internal session context belongs in the private ai-context repository.
+.ai-context/
+docs/notes/
+**/*handoff*.md
+docs/report-ux.md
