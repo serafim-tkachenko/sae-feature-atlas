@@ -9,6 +9,9 @@ const report = pathToFileURL(
 const partial = pathToFileURL(
   resolve("../tmp/browser-fixtures/partial.html"),
 ).href;
+const legacy = pathToFileURL(
+  resolve("../tmp/browser-fixtures/legacy.html"),
+).href;
 
 test("opens directly from disk offline, with literal context text and real histogram", async ({
   page,
@@ -184,4 +187,182 @@ test("unknown feature links and absent regime examples are explicit", async ({
     .click();
   await page.getByRole("button", { name: "Low regime 0" }).click();
   await expect(page.getByText(/No low-regime contexts saved/)).toBeVisible();
+});
+
+test("context help is keyboard accessible, modal, and returns focus", async ({
+  page,
+}) => {
+  await page.goto(report);
+  const trigger = page.getByRole("button", {
+    name: "About reading activation contexts",
+  });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", {
+    name: "Reading activation contexts",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("it does not encode activation strength");
+  await expect(
+    dialog.getByRole("button", { name: "Close help" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  // Native dialogs may cycle through browser chrome (reported as body).
+  // Focus must never reach an interactive element behind the modal.
+  expect(
+    await page.evaluate(
+      () =>
+        document.activeElement === document.body ||
+        Boolean(document.activeElement?.closest("dialog")),
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    dialog.getByRole("button", { name: "Close help" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page
+    .getByRole("button", {
+      name: "About eligible-token frequency",
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "1 in 100 eligible tokens",
+  );
+  await page.getByRole("button", { name: "Close help" }).click();
+  await page.goto(legacy);
+  await page
+    .getByRole("button", { name: "About legacy token frequency" })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "denominator and token eligibility policy are not recorded",
+  );
+});
+
+test("active filters can be removed individually and invalid numeric ranges recover", async ({
+  page,
+}) => {
+  await page.goto(report);
+  const list = page.getByLabel("Matching features").getByRole("button");
+  await page.getByRole("searchbox").fill("quantum");
+  await page.getByLabel("Minimum support", { exact: true }).fill("6");
+  await expect(list).toHaveCount(1);
+  await expect(page.getByLabel("Active filters")).toContainText(
+    "Showing 1 of 32 features",
+  );
+  await page
+    .getByRole("button", { name: "Remove support filter", exact: true })
+    .click();
+  await expect(list).toHaveCount(2);
+  await expect(page.getByRole("searchbox")).toHaveValue("quantum");
+  await page.getByLabel("Minimum frequency (%)", { exact: true }).fill("8");
+  await page.getByLabel("Maximum frequency (%)", { exact: true }).fill("4");
+  await expect(page.getByRole("alert")).toContainText(
+    "minimum no greater than maximum",
+  );
+  await expect(
+    page.getByLabel("Minimum frequency (%)", { exact: true }),
+  ).toHaveAttribute("aria-invalid", "true");
+  await expect(list).toHaveCount(2);
+  await page.getByLabel("Maximum frequency (%)", { exact: true }).fill("10");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(list).toHaveCount(1);
+  await page.getByLabel("Minimum support", { exact: true }).fill("-1");
+  await expect(page.getByRole("alert")).toContainText(
+    "whole number of 0 or more",
+  );
+  await page
+    .getByRole("button", { name: "Reset filters", exact: true })
+    .first()
+    .click();
+  await expect(list).toHaveCount(25);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByLabel("Active filters")).toContainText("no filters");
+});
+
+test("first-use saving guidance and help fit a narrow viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(report);
+  await page.getByRole("button", { name: "Saved (0)", exact: true }).click();
+  await expect(page.getByText(/No saved features yet/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "How saving & sharing works" })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Save at least one feature",
+  );
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375);
+  const box = (await page.getByRole("dialog").boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(375);
+  await page.screenshot({ path: "../tmp/browser-fixtures/mobile-help.png" });
+  await page.getByRole("button", { name: "Close help" }).click();
+  await page.getByRole("button", { name: "Remove saved filter" }).click();
+  await expect(
+    page.getByLabel("Matching features").getByRole("button"),
+  ).toHaveCount(25);
+});
+
+test("feature links focus on evidence, reading modes reveal context, and section navigation moves focus", async ({
+  page,
+}) => {
+  await page.goto(`${report}#feature=7`);
+  await expect(page.getByRole("searchbox")).not.toBeVisible();
+  const context = page.locator(".context-body > .context-text").first();
+  await expect(context).not.toContainText("Earlier saved context.");
+  await expect(page.getByRole("meter").first()).toHaveAttribute("max", "3");
+  await page.getByRole("button", { name: "Expanded", exact: true }).click();
+  await expect(context).toContainText("Earlier saved context.");
+  await page.getByRole("button", { name: "Snippet", exact: true }).click();
+  await expect(context).not.toContainText("Earlier saved context.");
+  await page
+    .getByRole("navigation", { name: "Evidence sections" })
+    .getByRole("button", { name: "Distribution", exact: true })
+    .click();
+  await expect(page.locator("#activation-distribution")).toBeFocused();
+  await page
+    .getByRole("navigation", { name: "Evidence sections" })
+    .getByRole("button", { name: /Contexts/ })
+    .click();
+  await expect(page.locator("#activation-contexts")).toBeFocused();
+  await page.locator(".detail-heading").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "../tmp/browser-fixtures/desktop-inspector.png",
+  });
+});
+
+test("previous and next respect filters, sort order, and the ends of the list", async ({
+  page,
+}) => {
+  await page.goto(report);
+  await page.getByRole("searchbox").fill("quantum");
+  await expect(
+    page.getByRole("button", { name: "Previous feature", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Next feature", exact: true }).click();
+  await expect(page).toHaveURL(/#feature=9$/);
+  await expect(page.getByRole("searchbox")).toHaveValue("quantum");
+  await expect(page.getByLabel("Feature navigation")).toContainText(
+    "2 of 2 matching features",
+  );
+  await expect(
+    page.getByRole("button", { name: "Next feature", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole("meter").first()).toHaveAttribute("max", "2");
+  await page
+    .getByRole("button", { name: "Previous feature", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#feature=7$/);
+  await page.getByText("Search, filters & landscape", { exact: true }).click();
+  await expect(page.getByRole("searchbox")).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Remove search filter" }),
+  ).toBeVisible();
 });

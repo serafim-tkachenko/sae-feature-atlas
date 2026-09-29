@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import type { Feature } from "./types";
+import { HelpButton } from "./help";
 
 export const numeric = (x: unknown): x is number =>
   typeof x === "number" && Number.isFinite(x);
@@ -96,8 +97,13 @@ export function Scatter({
     <div className="scatter" ref={ref}>
       <div className="section-heading">
         <div>
-          <h2>Feature landscape</h2>
-          <p>Frequency × activation strength</p>
+          <h2>
+            Feature landscape <HelpButton topic="landscape" />
+          </h2>
+          <p>
+            One point per feature · farther right = more frequent · higher =
+            stronger
+          </p>
         </div>
         {brushed && (
           <button onClick={() => onBrush(null)}>Clear chart selection</button>
@@ -173,7 +179,7 @@ export function Scatter({
               transform={`translate(13 ${(top + bottom) / 2}) rotate(-90)`}
               textAnchor="middle"
             >
-              p99 activation (log scale)
+              p99 activation (log1p)
             </text>
             <text x={(left + right) / 2} y={height - 4} textAnchor="middle">
               Recorded token frequency
@@ -202,6 +208,22 @@ export function Scatter({
               />
             )}
           </svg>
+          <div className="chart-legend">
+            <span>
+              <i aria-hidden="true" />
+              Feature
+            </span>
+            <span>
+              <i className="selected" aria-hidden="true" />
+              Selected feature
+            </span>
+            {brushed !== null && (
+              <span>
+                <i className="faded" aria-hidden="true" />
+                Outside chart selection
+              </span>
+            )}
+          </div>
           <p className="chart-caption">
             {hover
               ? `Feature ${hover.id} · ${percent(hover.frequency)} · p99 ${number(hover.p99)}`
@@ -231,11 +253,16 @@ export function Histogram({ feature }: { feature: Feature }) {
   return (
     <div className="histogram" ref={ref}>
       <div className="section-heading">
-        <h3>Stored activation distribution</h3>
+        <h3 id="activation-distribution" tabIndex={-1}>
+          Stored activation distribution <HelpButton topic="histogram" />
+        </h3>
         <span>
           {h ? `${number(h.count)} finite stored rows` : "Unavailable"}
         </span>
       </div>
+      <p className="field-hint">
+        Taller bars mean more saved values in that activation range.
+      </p>
       {h ? (
         <svg
           viewBox={`0 0 ${width} ${height}`}

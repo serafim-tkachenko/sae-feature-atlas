@@ -36,9 +36,45 @@ summary and diagnostics files in the output directory are linked from Run detail
    run identity, fingerprints, artifact statuses, and export policy.
 
 Feature links use `#feature=<id>` and survive browser reload/back navigation.
+Opening a feature link collapses **Search, filters & landscape** to bring the
+evidence forward; reopen it to search or adjust filters. **Previous/Next** in
+the evidence panel follows the current filtered sort order. Section buttons jump
+to contexts, the distribution, or related features and move keyboard focus there.
+On small screens, selecting a feature scrolls to its evidence.
+
+Feature rows show an example target token when available. **Snippet** shortens
+saved left/right context and collapses line breaks; **Expanded** shows all of
+that saved context. Activation bars compare each example with the strongest
+value in its current group. Their scale is local to the group, not a percentile
+or a confidence score. The underlying evidence is unchanged by display mode.
+
 When sharing a local link, send the HTML too. Bookmarks stay in the current
 browser when local storage is available; export JSON for a portable record.
 Reports and selection exports contain corpus excerpts.
+
+### Guidance while exploring
+
+**Quick guide** introduces the find → inspect → compare → save workflow. The
+**?** buttons beside metrics, charts, context groups, neighbors, and provenance
+explain what each view measures, how to use it, and its limitations. Help opens
+with a click, tap, or keyboard activation; Escape closes it and returns focus.
+Legacy frequency has its own explanation so an unknown denominator is not
+confused with current eligible-token frequency.
+
+Inline hints explain the target-token highlight, support versus text count,
+chart colors, and search scope. The highlight identifies the saved target
+position; its color does not encode activation magnitude. Triage labels include
+a suggested inspection step, and Run details describes each artifact's purpose.
+
+The result count and removable filter chips show all active constraints,
+including a chart selection or the saved-only view. Numeric filters reject
+negative/fractional support and frequencies outside 0–100 or a reversed range.
+An invalid support filter is ignored until corrected; an invalid frequency
+range suspends both frequency bounds. Other valid filters still apply, and the
+error stays visible. Reset filters clears all constraints.
+
+See [Report UX design notes](report-ux.md) for the reference interfaces and
+reasoning behind these choices.
 
 ## Evidence and population boundaries
 

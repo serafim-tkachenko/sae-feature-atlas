@@ -43,7 +43,9 @@ pd.DataFrame(
             "activation": activation,
             "text_id": 0,
             "token_pos": i,
-            "left_context": "A quantum ",
+            "left_context": (
+                "Earlier saved context. " + "Some surrounding text. " * 6 if fid == 7 else ""
+            ) + "A quantum ",
             "center_token": center,
             "right_context": " example.",
             "source": "synthetic",
@@ -71,3 +73,10 @@ partial.mkdir(exist_ok=True)
 (partial / "feature_cards.parquet").write_bytes(b"corrupt artifact")
 pd.DataFrame().to_parquet(partial / "decoder_neighbors.parquet")
 write_explorer(partial, root / "partial.html")
+
+legacy = root / "legacy"
+legacy.mkdir(exist_ok=True)
+pd.DataFrame(
+    [{"feature_id": 7, "token_frequency": 0.1, "n_token_activations": 10, "n_texts": 2}]
+).to_parquet(legacy / "feature_stats.parquet")
+write_explorer(legacy, root / "legacy.html")

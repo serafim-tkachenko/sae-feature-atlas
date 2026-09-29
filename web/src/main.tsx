@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Histogram, Scatter, number, numeric, percent } from "./charts";
+import {
+  HelpButton,
+  HelpProvider,
+  labelHint,
+  diagnosticNames,
+  artifactDescriptions,
+} from "./help";
 import type { Example, Feature, Report } from "./types";
 import "./style.css";
 
@@ -11,36 +18,64 @@ function hashId(): number | null {
   return value !== null && /^\d+$/.test(value) ? Number(value) : null;
 }
 
-function Context({ example }: { example: Example }) {
+function Context({
+  example,
+  compact,
+  maximum,
+  index,
+}: {
+  example: Example;
+  compact: boolean;
+  maximum: number;
+  index: number;
+}) {
   const center = example.center_token || "";
+  const left = example.left_context || "";
+  const right = example.right_context || "";
   return (
-    <article className="context-example">
-      <div className="context-meta">
-        <span>
-          {example.source || "Source not recorded"} · text{" "}
-          {example.text_id ?? "?"} · token {example.token_pos ?? "?"}
+    <article className={`context-example ${compact ? "compact" : ""}`}>
+      <div className="context-score">
+        <span className="example-index">
+          {String(index + 1).padStart(2, "0")}
         </span>
-        <span className="activation">
-          activation {number(example.activation)}
-        </span>
+        <strong>{number(example.activation)}</strong>
+        <span>activation</span>
+        {numeric(example.activation) &&
+          example.activation >= 0 &&
+          maximum > 0 && (
+            <meter
+              min={0}
+              max={maximum}
+              value={example.activation}
+              aria-label={`Example ${index + 1} activation relative to the strongest value in this group`}
+            />
+          )}
       </div>
-      <p className="context-text">
-        {example.left_context}
-        <mark>
-          {center.trim()
-            ? center
-            : `[${center.length ? "whitespace" : "empty token"}]`}
-        </mark>
-        {example.right_context}
-      </p>
-      <details className="evidence-reference">
-        <summary>Evidence reference</summary>
-        <code>{example.evidence_id}</code>
-        <p>{example.artifact}</p>
-        {example.display_context && (
-          <p className="context-text">{example.display_context}</p>
-        )}
-      </details>
+      <div className="context-body">
+        <div className="context-meta">
+          <span>
+            {example.source || "Source not recorded"} · text{" "}
+            {example.text_id ?? "?"} · token {example.token_pos ?? "?"}
+          </span>
+        </div>
+        <p className="context-text">
+          {compact && left.length > 90 ? `…${left.slice(-90)}` : left}
+          <mark>
+            {center.trim()
+              ? center
+              : `[${center.length ? "whitespace" : "empty token"}]`}
+          </mark>
+          {compact && right.length > 90 ? `${right.slice(0, 90)}…` : right}
+        </p>
+        <details className="evidence-reference">
+          <summary>Evidence reference</summary>
+          <code>{example.evidence_id}</code>
+          <p>{example.artifact}</p>
+          {example.display_context && (
+            <p className="context-text">{example.display_context}</p>
+          )}
+        </details>
+      </div>
     </article>
   );
 }
@@ -53,6 +88,10 @@ function FeatureDetail({
   onSelect,
   ids,
   notify,
+  previous,
+  next,
+  position,
+  onBrowse,
 }: {
   feature: Feature;
   report: Report;
@@ -61,11 +100,25 @@ function FeatureDetail({
   onSelect: (id: number) => void;
   ids: Set<number>;
   notify: (text: string) => void;
+  previous: number | null;
+  next: number | null;
+  position: string;
+  onBrowse: (id: number) => void;
 }) {
   const [group, setGroup] = useState<"top" | "low" | "high">("top");
   const [showAll, setShowAll] = useState(false);
   const [copyFallback, setCopyFallback] = useState("");
+  const [compact, setCompact] = useState(true);
   const examples = feature.examples[group];
+  const maximum = Math.max(
+    0,
+    ...examples.map((example) => example.activation ?? 0),
+  );
+  function jumpTo(id: string) {
+    const target = document.getElementById(id);
+    target?.scrollIntoView({ block: "start", behavior: "instant" });
+    target?.focus({ preventScroll: true });
+  }
   async function copyLink() {
     const url = new URL(location.href);
     url.hash = `feature=${feature.id}`;
@@ -84,6 +137,25 @@ function FeatureDetail({
       className="feature-detail"
       aria-label={`Feature ${feature.id} evidence`}
     >
+      <div className="evidence-navigation" aria-label="Feature navigation">
+        <span>{position}</span>
+        <div>
+          <button
+            disabled={previous === null}
+            onClick={() => previous !== null && onBrowse(previous)}
+            aria-label="Previous feature"
+          >
+            ← Previous
+          </button>
+          <button
+            disabled={next === null}
+            onClick={() => next !== null && onBrowse(next)}
+            aria-label="Next feature"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
       <div className="detail-heading">
         <div>
           <p className="eyebrow">FEATURE EVIDENCE</p>
@@ -93,6 +165,7 @@ function FeatureDetail({
           <p className="muted">
             Triage: {human(feature.label)}
             {feature.priority && ` · ${feature.priority} review priority`}
+            <HelpButton topic="labels" extra={labelHint(feature.label)} />
           </p>
         </div>
         <div className="actions">
@@ -106,6 +179,23 @@ function FeatureDetail({
           </button>
         </div>
       </div>
+      <p className="detail-hint">{labelHint(feature.label)}</p>
+      <nav className="evidence-sections" aria-label="Evidence sections">
+        <button onClick={() => jumpTo("activation-contexts")}>
+          Contexts{" "}
+          <span>
+            {feature.examples.top.length +
+              feature.examples.low.length +
+              feature.examples.high.length}
+          </span>
+        </button>
+        <button onClick={() => jumpTo("activation-distribution")}>
+          Distribution
+        </button>
+        <button onClick={() => jumpTo("related-features")}>
+          Related features
+        </button>
+      </nav>
       {copyFallback && (
         <label className="copy-link">
           Feature link
@@ -122,24 +212,38 @@ function FeatureDetail({
             {feature.population === "analysis_activations"
               ? "Eligible-token frequency"
               : "Legacy token frequency"}
+            <HelpButton
+              topic={
+                feature.population === "analysis_activations"
+                  ? "frequency"
+                  : "legacyFrequency"
+              }
+            />
           </dt>
           <dd>{percent(feature.frequency)}</dd>
+          <dd className="metric-hint">Share of token positions</dd>
         </div>
         <div>
           <dt>
             {feature.population === "analysis_activations"
               ? "Analysis support"
               : "Recorded support"}
+            <HelpButton topic="support" />
           </dt>
           <dd>{number(feature.support)}</dd>
+          <dd className="metric-hint">Activation observations</dd>
         </div>
         <div>
           <dt>Texts with support</dt>
           <dd>{number(feature.text_count)}</dd>
+          <dd className="metric-hint">Distinct text IDs</dd>
         </div>
         <div>
-          <dt>p99 activation</dt>
+          <dt>
+            p99 activation <HelpButton topic="activation" />
+          </dt>
           <dd>{number(feature.p99)}</dd>
+          <dd className="metric-hint">Upper-tail strength</dd>
         </div>
       </dl>
       <p className="population-note">
@@ -153,33 +257,49 @@ function FeatureDetail({
 
       <div className="section-heading contexts-heading">
         <div>
-          <h3>Activation contexts</h3>
-          <p>Read the evidence behind the numbers.</p>
+          <h3 id="activation-contexts" tabIndex={-1}>
+            Activation contexts <HelpButton topic="contexts" />
+          </h3>
+          <p>Look for recurring patterns and examples that challenge them.</p>
         </div>
       </div>
-      <div className="context-tabs" aria-label="Context example group">
-        {(["top", "low", "high"] as const).map((value) => (
-          <button
-            key={value}
-            aria-pressed={group === value}
-            onClick={() => {
-              setGroup(value);
-              setShowAll(false);
-            }}
-          >
-            {value === "top"
-              ? "Strongest"
-              : `${value === "low" ? "Low" : "High"} regime`}{" "}
-            <span>{feature.examples[value].length}</span>
+      <p className="context-legend">
+        <span className="token-swatch">Highlighted token</span> = the recorded
+        activation position. The color marks position, not strength.
+      </p>
+      <div className="context-controls">
+        <div className="context-tabs" aria-label="Context example group">
+          {(["top", "low", "high"] as const).map((value) => (
+            <button
+              key={value}
+              aria-pressed={group === value}
+              onClick={() => {
+                setGroup(value);
+                setShowAll(false);
+              }}
+            >
+              {value === "top"
+                ? "Strongest"
+                : `${value === "low" ? "Low" : "High"} regime`}{" "}
+              <span>{feature.examples[value].length}</span>
+            </button>
+          ))}
+        </div>
+        <div className="reading-mode" aria-label="Context display">
+          <button aria-pressed={compact} onClick={() => setCompact(true)}>
+            Snippet
           </button>
-        ))}
+          <button aria-pressed={!compact} onClick={() => setCompact(false)}>
+            Expanded
+          </button>
+        </div>
       </div>
       <p className="fine">
         {group === "top"
           ? "Highest-activation saved examples; this is not a representative sample."
-          : "Saved component examples. A two-component fit does not establish two meanings."}{" "}
+          : `${group === "low" ? "Lower" : "Higher"}-mean fitted component examples. A two-component fit does not establish two meanings.`}{" "}
         Up to {String(report.export_policy.examples_per_group)} examples per
-        group are included.
+        group are included. Bars compare activation strength within this group.
       </p>
       {examples.length ? (
         <>
@@ -187,6 +307,9 @@ function FeatureDetail({
             <Context
               key={`${example.evidence_id}-${index}`}
               example={example}
+              compact={compact}
+              maximum={maximum}
+              index={index}
             />
           ))}
           {examples.length > 4 && (
@@ -205,6 +328,13 @@ function FeatureDetail({
       )}
 
       <Histogram feature={feature} />
+      <h3 className="related-heading" id="related-features" tabIndex={-1}>
+        Related features
+      </h3>
+      <p className="field-hint">
+        Two ways to find a useful comparison. Open a feature to inspect its
+        evidence.
+      </p>
       <div className="neighbors-grid">
         {(["coactivation", "decoder"] as const).map((kind) => (
           <section key={kind} className="neighbor-section">
@@ -212,6 +342,7 @@ function FeatureDetail({
               {kind === "coactivation"
                 ? "Coactivating features"
                 : "Decoder neighbors"}
+              <HelpButton topic={kind} />
             </h3>
             <p className="fine">
               {kind === "coactivation"
@@ -265,6 +396,12 @@ function FeatureDetail({
       </div>
       <details className="diagnostics">
         <summary>Additional diagnostics</summary>
+        <p className="fine">
+          Supporting measures for follow-up analysis.{" "}
+          <HelpButton topic="diagnostics">
+            How to read these diagnostics
+          </HelpButton>
+        </p>
         <dl className="diagnostic-values">
           {Object.entries({
             "Artifact triage score": feature.artifact_score,
@@ -272,7 +409,7 @@ function FeatureDetail({
             ...feature.diagnostics,
           }).map(([key, value]) => (
             <div key={key}>
-              <dt>{human(key)}</dt>
+              <dt>{diagnosticNames[key] ?? human(key)}</dt>
               <dd>{number(value)}</dd>
             </div>
           ))}
@@ -289,7 +426,9 @@ function FeatureDetail({
 function RunDetails({ report }: { report: Report }) {
   return (
     <section className="run-details" aria-label="Run details">
-      <h2>Run details & evidence availability</h2>
+      <h2>
+        Run details & evidence availability <HelpButton topic="availability" />
+      </h2>
       <dl className="run-values">
         {Object.entries({
           Run: report.run.name,
@@ -327,7 +466,10 @@ function RunDetails({ report }: { report: Report }) {
             {report.artifacts.map((item) => (
               <tr key={item.name}>
                 <td>
-                  {item.name}
+                  {artifactDescriptions[item.name] && (
+                    <p>{artifactDescriptions[item.name]}</p>
+                  )}
+                  <code>{item.name}</code>
                   {item.detail && <p className="error-detail">{item.detail}</p>}
                 </td>
                 <td>
@@ -378,6 +520,7 @@ function App({ report }: { report: Report }) {
   const [savedOnly, setSavedOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [details, setDetails] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(hashId() === null);
   const [message, setMessage] = useState("");
   const storageKey = `atlas-saved:${report.run.fingerprints.analysis || `${report.run.name}:${report.run.sae_id}`}`;
   const [saved, setSaved] = useState<number[]>(() => {
@@ -419,6 +562,27 @@ function App({ report }: { report: Report }) {
       ),
     [features],
   );
+  const supportError =
+    minSupport !== "" &&
+    (!Number.isInteger(Number(minSupport)) || Number(minSupport) < 0);
+  const frequencyError =
+    [minFrequency, maxFrequency].some(
+      (value) =>
+        value !== "" &&
+        (!Number.isFinite(Number(value)) ||
+          Number(value) < 0 ||
+          Number(value) > 100),
+    ) ||
+    (minFrequency !== "" &&
+      maxFrequency !== "" &&
+      Number(minFrequency) > Number(maxFrequency));
+  const filterError = [
+    supportError && "Minimum support must be a whole number of 0 or more.",
+    frequencyError &&
+      "Use frequencies from 0 to 100, with minimum no greater than maximum.",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const matching = useMemo(
     () =>
       features.filter((f) => {
@@ -426,16 +590,19 @@ function App({ report }: { report: Report }) {
         if (label !== "all" && f.label !== label) return false;
         if (
           minSupport !== "" &&
+          !supportError &&
           (!numeric(f.support) || f.support < Number(minSupport))
         )
           return false;
         if (
           minFrequency !== "" &&
+          !frequencyError &&
           (!numeric(f.frequency) || f.frequency * 100 < Number(minFrequency))
         )
           return false;
         if (
           maxFrequency !== "" &&
+          !frequencyError &&
           (!numeric(f.frequency) || f.frequency * 100 > Number(maxFrequency))
         )
           return false;
@@ -455,6 +622,8 @@ function App({ report }: { report: Report }) {
       maxFrequency,
       query,
       searchText,
+      supportError,
+      frequencyError,
     ],
   );
   const visible = useMemo(
@@ -473,12 +642,80 @@ function App({ report }: { report: Report }) {
   const feature = features.find((f) => f.id === selected);
   const lastPage = Math.max(0, Math.ceil(visible.length / PAGE_SIZE) - 1);
   const currentPage = Math.min(page, lastPage);
+  const selectedIndex = visible.findIndex((f) => f.id === selected);
+  const activeFilters = [
+    ...(query.trim()
+      ? [
+          {
+            name: "search",
+            text: `Search: ${query.trim()}`,
+            clear: () => setQuery(""),
+          },
+        ]
+      : []),
+    ...(label !== "all"
+      ? [
+          {
+            name: "label",
+            text: `Label: ${human(label)}`,
+            clear: () => setLabel("all"),
+          },
+        ]
+      : []),
+    ...(minSupport && !supportError
+      ? [
+          {
+            name: "support",
+            text: `Support ≥ ${minSupport}`,
+            clear: () => setMinSupport(""),
+          },
+        ]
+      : []),
+    ...(minFrequency && !frequencyError
+      ? [
+          {
+            name: "minimum frequency",
+            text: `Frequency ≥ ${minFrequency}%`,
+            clear: () => setMinFrequency(""),
+          },
+        ]
+      : []),
+    ...(maxFrequency && !frequencyError
+      ? [
+          {
+            name: "maximum frequency",
+            text: `Frequency ≤ ${maxFrequency}%`,
+            clear: () => setMaxFrequency(""),
+          },
+        ]
+      : []),
+    ...(brushed !== null
+      ? [
+          {
+            name: "chart selection",
+            text: "Chart selection",
+            clear: () => setBrushed(null),
+          },
+        ]
+      : []),
+    ...(savedOnly
+      ? [
+          {
+            name: "saved",
+            text: "Saved only",
+            clear: () => setSavedOnly(false),
+          },
+        ]
+      : []),
+  ];
   function selectFeature(id: number, reveal = false) {
     setSelected(id);
     location.hash = `feature=${id}`;
     if (reveal) {
       resetFilters();
       setMessage(`Opened related feature ${id}. Filters cleared.`);
+    }
+    if (reveal || window.matchMedia("(max-width: 720px)").matches) {
       requestAnimationFrame(() =>
         document
           .querySelector(".evidence-panel")
@@ -548,6 +785,7 @@ function App({ report }: { report: Report }) {
           </div>
         </div>
         <div className="header-actions">
+          <HelpButton topic="guide">Quick guide</HelpButton>
           <button aria-pressed={details} onClick={() => setDetails(!details)}>
             Run details
           </button>
@@ -566,7 +804,7 @@ function App({ report }: { report: Report }) {
           </button>
         </div>
       </header>
-      <main>
+      <main className={overviewOpen ? "" : "focused-view"}>
         <div className="run-heading">
           <div>
             <p className="eyebrow">SINGLE-RUN EXPLORER</p>
@@ -580,6 +818,13 @@ function App({ report }: { report: Report }) {
               ? "Provenance recorded"
               : "Unverified / legacy run"}
           </span>
+        </div>
+        <div className="orientation">
+          <p>
+            Choose a feature → read its contexts → compare neighbors → save the
+            evidence.
+          </p>
+          <HelpButton topic="saved">How saving & sharing works</HelpButton>
         </div>
         <div className="run-strip">
           <span>
@@ -599,11 +844,14 @@ function App({ report }: { report: Report }) {
           </span>
         </div>
         {report.warnings.length > 0 && (
-          <div className="notice">
+          <details className="notice run-notes">
+            <summary>
+              Run notes · check provenance before comparing results
+            </summary>
             {report.warnings.map((text) => (
               <p key={text}>{text}</p>
             ))}
-          </div>
+          </details>
         )}
         {report.artifacts.some((a) => a.status === "unreadable") && (
           <div className="notice">
@@ -614,98 +862,160 @@ function App({ report }: { report: Report }) {
           </div>
         )}
         {details && <RunDetails report={report} />}
-        <div className="explore-overview">
-          <div className="search-panel">
-            <h2>Find a feature</h2>
-            <label>
-              Feature ID, triage label, or saved context
-              <input
-                type="search"
-                value={query}
-                placeholder="Search features and strongest contexts…"
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <div className="two-fields">
+        <details
+          className="browse-controls"
+          open={overviewOpen}
+          onToggle={(event) => setOverviewOpen(event.currentTarget.open)}
+        >
+          <summary>
+            <span>Search, filters & landscape</span>
+            <span className="summary-hint">
+              {overviewOpen
+                ? "Collapse to focus on evidence"
+                : "Open to find a feature"}
+            </span>
+          </summary>
+          <div className="explore-overview">
+            <div className="search-panel">
+              <h2>
+                Find a feature <HelpButton topic="filters" />
+              </h2>
               <label>
-                Triage label
-                <select
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
+                Feature ID, triage label, or saved context
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search features and strongest contexts…"
+                  aria-describedby="search-hint"
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </label>
+              <p className="field-hint" id="search-hint">
+                Search checks only exported strongest contexts and labels. A
+                number matches an exact feature ID.
+              </p>
+              <div className="two-fields">
+                <label>
+                  Triage label
+                  <select
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                  >
+                    <option value="all">All labels</option>
+                    {[...new Set(features.map((f) => f.label))]
+                      .sort()
+                      .map((value) => (
+                        <option key={value} value={value}>
+                          {human(value)}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Minimum support
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={minSupport}
+                    aria-invalid={supportError}
+                    aria-describedby={
+                      supportError ? "filter-error" : "numeric-hint"
+                    }
+                    placeholder="Any"
+                    onChange={(e) => setMinSupport(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="two-fields">
+                <label>
+                  Minimum frequency (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="any"
+                    value={minFrequency}
+                    aria-invalid={frequencyError}
+                    aria-describedby={
+                      frequencyError ? "filter-error" : "numeric-hint"
+                    }
+                    placeholder="0"
+                    onChange={(e) => setMinFrequency(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Maximum frequency (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="any"
+                    value={maxFrequency}
+                    aria-invalid={frequencyError}
+                    aria-describedby={
+                      frequencyError ? "filter-error" : "numeric-hint"
+                    }
+                    placeholder="100"
+                    onChange={(e) => setMaxFrequency(e.target.value)}
+                  />
+                </label>
+              </div>
+              <p className="field-hint" id="numeric-hint">
+                Support counts observations. Frequency uses percentages: enter 1
+                for 1%. <HelpButton topic="support">About support</HelpButton>
+              </p>
+              {filterError && (
+                <p className="filter-error" id="filter-error" role="alert">
+                  {filterError} Invalid numeric filters are not applied.
+                </p>
+              )}
+              <div className="filter-actions">
+                <button onClick={resetFilters}>Reset filters</button>
+                <button
+                  disabled={!visible.length}
+                  onClick={() =>
+                    selectFeature(
+                      visible[Math.floor(Math.random() * visible.length)].id,
+                    )
+                  }
                 >
-                  <option value="all">All labels</option>
-                  {[...new Set(features.map((f) => f.label))]
-                    .sort()
-                    .map((value) => (
-                      <option key={value} value={value}>
-                        {human(value)}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                Minimum support
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={minSupport}
-                  placeholder="Any"
-                  onChange={(e) => setMinSupport(e.target.value)}
-                />
-              </label>
+                  Random feature
+                </button>
+              </div>
+              <p className="fine">
+                Filters combine and change this view only. Labels are inspection
+                cues, not explanations.
+              </p>
             </div>
-            <div className="two-fields">
-              <label>
-                Minimum frequency (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="any"
-                  value={minFrequency}
-                  placeholder="0"
-                  onChange={(e) => setMinFrequency(e.target.value)}
-                />
-              </label>
-              <label>
-                Maximum frequency (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="any"
-                  value={maxFrequency}
-                  placeholder="100"
-                  onChange={(e) => setMaxFrequency(e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="filter-actions">
-              <button onClick={resetFilters}>Reset filters</button>
-              <button
-                disabled={!visible.length}
-                onClick={() =>
-                  selectFeature(
-                    visible[Math.floor(Math.random() * visible.length)].id,
-                  )
-                }
-              >
-                Random feature
-              </button>
-            </div>
-            <p className="fine">
-              Labels are inspection cues, not explanations. Search covers
-              exported strongest contexts only.
-            </p>
+            <Scatter
+              features={matching}
+              selected={selected}
+              brushed={brushed}
+              onSelect={selectFeature}
+              onBrush={setBrushed}
+            />
           </div>
-          <Scatter
-            features={matching}
-            selected={selected}
-            brushed={brushed}
-            onSelect={selectFeature}
-            onBrush={setBrushed}
-          />
+        </details>
+        <div className="filter-summary" aria-label="Active filters">
+          <p role="status">
+            Showing <b>{visible.length.toLocaleString()}</b> of{" "}
+            {features.length.toLocaleString()} features
+          </p>
+          {activeFilters.length ? (
+            activeFilters.map((filter) => (
+              <button
+                className="filter-chip"
+                key={filter.name}
+                onClick={filter.clear}
+                aria-label={`Remove ${filter.name} filter`}
+              >
+                {filter.text} <span aria-hidden="true">×</span>
+              </button>
+            ))
+          ) : (
+            <span className="muted">All features · no filters</span>
+          )}
         </div>
         <div className="workspace">
           <aside className="feature-browser" aria-label="Feature browser">
@@ -723,6 +1033,10 @@ function App({ report }: { report: Report }) {
                 </select>
               </label>
             </div>
+            <p className="list-hint">
+              Select a row to inspect. Quotes show example tokens; percentages
+              show frequency.
+            </p>
             <div className="feature-list" aria-label="Matching features">
               {visible
                 .slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
@@ -737,6 +1051,14 @@ function App({ report }: { report: Report }) {
                       <b>#{f.id}</b>
                       <span>{percent(f.frequency)}</span>
                     </span>
+                    {f.examples.top[0]?.center_token && (
+                      <span className="row-preview">
+                        “
+                        {f.examples.top[0].center_token.trim().slice(0, 56) ||
+                          "[whitespace]"}
+                        ”
+                      </span>
+                    )}
                     <span className="row-bottom">
                       {human(f.label)}
                       {saved.includes(f.id) && (
@@ -749,9 +1071,11 @@ function App({ report }: { report: Report }) {
             {!visible.length && (
               <div className="empty small">
                 <p>
-                  {features.length
-                    ? "No features match these filters."
-                    : "No feature tables are available. Run the features stage to generate them."}
+                  {savedOnly && !saved.length
+                    ? "No saved features yet. Choose a feature and use Save feature to start a shortlist."
+                    : features.length
+                      ? "No features match these filters."
+                      : "No feature tables are available. Run the features stage to generate them."}
                 </p>
                 {features.length > 0 && (
                   <button onClick={resetFilters}>Reset filters</button>
@@ -797,6 +1121,20 @@ function App({ report }: { report: Report }) {
                 onSelect={(id) => selectFeature(id, true)}
                 ids={ids}
                 notify={setMessage}
+                previous={
+                  selectedIndex > 0 ? visible[selectedIndex - 1].id : null
+                }
+                next={
+                  selectedIndex >= 0 && selectedIndex < visible.length - 1
+                    ? visible[selectedIndex + 1].id
+                    : null
+                }
+                position={
+                  selectedIndex >= 0
+                    ? `${selectedIndex + 1} of ${visible.length.toLocaleString()} matching features`
+                    : "Outside current filters"
+                }
+                onBrowse={selectFeature}
               />
             ) : (
               <div className="empty">
@@ -841,7 +1179,11 @@ try {
   );
   if (report.schema_version !== 1 || !Array.isArray(report.features))
     throw new Error("Unsupported report schema");
-  root.render(<App report={report} />);
+  root.render(
+    <HelpProvider>
+      <App report={report} />
+    </HelpProvider>,
+  );
 } catch {
   root.render(
     <main>
