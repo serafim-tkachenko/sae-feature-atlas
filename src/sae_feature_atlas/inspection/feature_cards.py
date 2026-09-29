@@ -315,7 +315,11 @@ def _merge_coactivation(cards: pd.DataFrame, cfg: ExperimentConfig) -> pd.DataFr
         columns={"feature_i": "feature_id", "feature_j": "neighbor_feature_id"}
     )
     right = coactivation.rename(
-        columns={"feature_j": "feature_id", "feature_i": "neighbor_feature_id"}
+        columns={
+            "feature_j": "feature_id", "feature_i": "neighbor_feature_id",
+            "feature_i_count": "feature_j_count", "feature_j_count": "feature_i_count",
+            "p_j_given_i": "p_i_given_j", "p_i_given_j": "p_j_given_i",
+        }
     )
     both = pd.concat([left, right], ignore_index=True)
 
