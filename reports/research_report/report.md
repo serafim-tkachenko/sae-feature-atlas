@@ -2,7 +2,7 @@
 
 ## A study of SAE pseudo-concepts in Gemma 3 4B
 
-Phase 1 research report | FineWeb-Edu and English Wikipedia | September 2026
+Phase 1 research report | FineWeb-Edu and English Wikipedia
 
 ## Abstract
 

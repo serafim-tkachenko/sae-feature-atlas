@@ -18,7 +18,7 @@ def main():
         for p in files:
             z.write(p, str(p.relative_to(root)))
         z.write(root / "report_manifest.json", "report_manifest.json")
-        z.write("docs/foundation_handoff.md", "reproduction_guide.md")
+        z.write("docs/foundation_reproduction.md", "reproduction_guide.md")
     with zipfile.ZipFile(output) as z:
         assert z.testzip() is None
     print(output, output.stat().st_size)

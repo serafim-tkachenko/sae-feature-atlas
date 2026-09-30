@@ -61,3 +61,13 @@ reports/colab_lock_smoke/
 # Prepared foundation corpora and GPU data are distributed as artifacts.
 data/raw/foundation*/
 data/processed/gemma4b_foundation_v1_l*/
+
+# Internal working context is maintained privately.
+.ai-context/
+docs/notes/
+**/*handoff*.md
+research/STATUS.md
+docs/novelty_assessment.md
+experiments/coding_forensics/next_protocol.md
+reports/experiment_log.md
+AGENTS.md

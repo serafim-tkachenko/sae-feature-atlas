@@ -1,8 +1,8 @@
 # Native context-intervention pilot
 
-This implements the bounded development experiment proposed in the
-[novelty assessment](novelty_assessment.md). It does not implement a fresh
-confirmation study or claim a semantic mechanism. All original foundation
+This documents the executed development experiment testing whether native
+activation context modulates the effects of a fixed SAE decoder edit. It does
+not implement a fresh confirmation study or claim a semantic mechanism. All original foundation
 documents, including the old evaluation split, are development material here.
 
 ## Design and preparation
@@ -41,7 +41,7 @@ python scripts/build_intervention_bundle.py --prepared outputs/context_pilot_v3
 ```
 
 Local preparation needs the pinned SAE weights and tokenizer cached in Hugging
-Face, as well as the foundation data described in [the handoff](foundation_handoff.md).
+Face, as well as the foundation data described in [the reproduction guide](foundation_reproduction.md).
 The first two preparation directories made during implementation were development
 iterations; the run bundle is `outputs/context_pilot_v3`.
 
@@ -117,8 +117,7 @@ python scripts/render_scientific_pdf.py reports/context_intervention_pilot_v1/re
 ```
 
 PDF rendering requires ReportLab and a serif font, separate from the locked model
-environment. Delivery used the bundled document runtime and Poppler for visual
-inspection of all eight pages. One case has no next-token loss target because its
+environment. One case has no next-token loss target because its
 position is the final token in the fixed collection window; it remains in the
 intervention analyses.
 
@@ -138,17 +137,7 @@ development-check and train-one-source/check-the-other. Intervals condition on
 the fitted calibration model. The sample is small, and an added coordinate can
 overfit; a positive training fit is not a success criterion.
 
-## Next decision
-
-Use this pilot to choose an interpretable endpoint, estimate a minimally useful
-effect and plan sample size. Fresh confirmation needs a new frozen protocol,
-deduplication against all 12,000 foundation documents and held-out templates.
-The strongest novelty claim additionally requires selective effects beyond
-generic gain/normalization, a validated pathway intervention and SAE replication.
-If context adds no predictive value or the learned direction does not exceed
-matched controls, report that limitation before increasing the experiment size.
-
-## Completed development decision
+## Observed outcome
 
 The 96 feature-prompt cases (95 duplicate groups) yielded 5,376 factorial
 comparisons. All numerical audits passed; the largest reported relative error
@@ -159,4 +148,4 @@ random control on development-check documents. All pooled prediction-improvement
 intervals and all beyond-gain comparison intervals include zero. These are small,
 descriptive, uncorrected comparisons. The result supports retaining a modulation
 lead, but does not establish the proposed transferable change in feature function.
-Do not scale this exact design directly into confirmation on that basis.
+These development results do not establish a confirmatory effect.

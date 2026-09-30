@@ -67,9 +67,7 @@ Individual stages: collect, analyze, controls, robustness, report. The local
 default lock uses CUDA 13.0. Colab has a separate fully pinned, hash-checked CUDA
 12.6 environment in requirements/colab.lock, validated in an isolated local
 environment. Open notebooks/gemma_activation_regimes.ipynb in Colab and Run all.
-Until this branch is pushed, setup asks for the delivered source ZIP. Once pushed,
-it clones the research branch; the checked-out SHA is recorded. No remote branch
-or PR was created during the local work.
+The historical Colab notebook accepts the released source ZIP or a pinned repository checkout.
 
 The Colab larger configuration explicitly requests 5,000 documents x 512 tokens,
 2,048 screened latents, 48 candidates, 9,999 permutations and 1,000 bootstraps.
@@ -129,7 +127,3 @@ recomputes from intact raw data; per-feature checkpoints are recovery artifacts,
 not automatically resumed caches. The supplemental discovery-fit cache validates
 its feature set; use a new run name when changing experiment parameters.
 
-No existing atlas tests were removed. Baseline: 34 tests passed, Ruff lint passed;
-32 pre-existing files failed Ruff format checks. New files are formatted without
-mass-formatting unrelated scientific code. Runtime package versions and generated
-reports should be reviewed separately from statistical implementation in a PR.

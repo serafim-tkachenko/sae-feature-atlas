@@ -14,7 +14,7 @@ mathematical methods, 27 figures, 17 equations, limitations and a Phase 2 plan.
 The current result is reproducible contextual organization in selected entries,
 with local intervention modulation but no established transferable selective
 mechanism. The new analyses use saved responses and require no model rerun.
-See [report reproduction and Phase 2 handoff](docs/research_report_handoff.md).
+See [report reproduction](docs/combined_report_reproduction.md).
 Earlier reports below are retained as historical study snapshots.
 
 ## 4B foundation experiment
@@ -29,7 +29,7 @@ families, not a combined semantic or causal claim.
 
 The report includes PCA, whitening, directional participation, exact screened-pair
 cooccurrence, reconstruction, uncertainty and an explicitly exploratory
-encoder-covariance sensitivity. See the [reproduction guide](docs/foundation_handoff.md),
+encoder-covariance sensitivity. See the [reproduction guide](docs/foundation_reproduction.md),
 [fixed protocol](docs/foundation_protocol.md), and
 [technical appendix](reports/gemma4b_foundation_v1/technical_appendix.md).
 The earlier 1B experiment below remains a pilot.
@@ -39,8 +39,8 @@ The earlier 1B experiment below remains a pilot.
 The [native intervention workflow](docs/intervention_pilot.md) tests context
 directions learned from the foundation activations using constrained four-cell
 interventions, matched directions, normalization diagnostics and development
-prediction checks. The [novelty assessment](docs/novelty_assessment.md) explains
-the proposed contribution and its rejection criteria. These development analyses
+prediction checks. The [pilot methods](docs/intervention_pilot.md) document
+the executed design and its inferential limits. These development analyses
 do not constitute fresh confirmation or validated semantic mechanisms.
 
 The completed development report is available as
